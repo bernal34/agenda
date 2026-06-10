@@ -50,6 +50,7 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
   const due = formatDate(task.due_date);
   const overdue = isOverdue(task.due_date, task.status);
   const statusColor = STATUS_COLOR[task.status];
+  const isDone = task.status === 'done';
 
   return (
     <Pressable
@@ -58,6 +59,7 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
         styles.card,
         compact && styles.cardCompact,
         { borderLeftColor: statusColor },
+        isDone && styles.cardDone,
         pressed && onPress && styles.cardPressed,
       ]}
     >
@@ -74,7 +76,7 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
         </View>
       </View>
 
-      <Text style={styles.title} numberOfLines={2}>
+      <Text style={[styles.title, isDone && styles.titleDone]} numberOfLines={2}>
         {task.title}
       </Text>
 
@@ -139,6 +141,7 @@ const styles = StyleSheet.create({
   },
   cardCompact: { padding: spacing[3] },
   cardPressed: { backgroundColor: tokens.bg.subtle },
+  cardDone: { opacity: 0.6 },
 
   headerRow: {
     flexDirection: 'row',
@@ -155,6 +158,10 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     letterSpacing: -0.1,
     lineHeight: 19,
+  },
+  titleDone: {
+    textDecorationLine: 'line-through',
+    color: tokens.text.muted,
   },
 
   labelsRow: {
