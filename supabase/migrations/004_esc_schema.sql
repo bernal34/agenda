@@ -1,0 +1,26 @@
+-- Migration: 004_esc_schema
+--
+-- Phase 2A of the migration plan: replicate the Escrituración schema into
+-- the unified project as schema `esc`.
+--
+-- Status: APPLIED to mgfjswovpfrzjutmbevr on 2026-06-09 via MCP apply_migration.
+--
+-- Created objects:
+--   - schema esc (USAGE granted to authenticated)
+--   - 4 enums: estado_unidad, estado_proceso, estado_etapa, estado_pago
+--   - 18 tables (perfiles, torres, tipos_unidad, bancos, tipos_pago, notarias,
+--     app_config, esquemas_pago, unidades, compradores, etapas_esquema,
+--     documentos_etapa, procesos, etapas_proceso, documentos_proceso, pagos,
+--     comentarios_proceso, actividad_proceso)
+--   - 14 indexes
+--   - 16 functions (is_admin, is_admin_or_asesor, current_user_rol, is_authenticated,
+--     actor_nombre, fn_calc_dias_atraso, fn_recalcular_todos_los_atrasos,
+--     recalc_proceso, and 8 trigger functions)
+--   - 8 triggers
+--   - 1 view: v_alertas
+--   - 56 RLS policies (37 base + 18 super_admin overrides + 1 self_update)
+--
+-- Tables are EMPTY. Data migration from project bqbidqffijfizsciksnv → mgfjswovpfrzjutmbevr
+-- happens in Phase 2C (cutover). See agenda/docs/architecture/migration-plan.md.
+--
+-- Full SQL preserved in Supabase migration history.
