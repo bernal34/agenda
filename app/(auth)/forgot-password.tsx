@@ -8,32 +8,31 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Link } from 'expo-router';
+import { Link, useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { z } from 'zod';
-import { LogIn, Mail, Lock, ArrowRight } from 'lucide-react-native';
+import { KeyRound, Mail, ArrowRight, ArrowLeft } from 'lucide-react-native';
 
-import { signInWithPassword } from '../../lib/auth';
+import { requestPasswordReset } from '../../lib/auth';
 import { notify } from '../../lib/notify';
 import { Button, Card, Input } from '../../components/ui';
 import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
 });
 
 type FormValues = z.infer<typeof schema>;
 
-export default function LoginScreen() {
+export default function ForgotPasswordScreen() {
+  const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
+  const [sent, setSent] = useState(false);
   const {
     control,
     handleSubmit,
     formState: { errors },
-  } = useForm<FormValues>({
-    defaultValues: { email: '', password: '' },
-  });
+  } = useForm<FormValues>({ defaultValues: { email: '' } });
 
   const onSubmit = async (values: FormValues) => {
     const parsed = schema.safeParse(values);
@@ -43,10 +42,11 @@ export default function LoginScreen() {
     }
     setSubmitting(true);
     try {
-      await signInWithPassword(parsed.data.email, parsed.data.password);
+      await requestPasswordReset(parsed.data.email);
+      setSent(true);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al iniciar sesión';
-      notify('No se pudo iniciar sesión', msg);
+      const msg = err instanceof Error ? err.message : 'Error al enviar el correo';
+      notify('No se pudo enviar', msg);
     } finally {
       setSubmitting(false);
     }
@@ -64,74 +64,76 @@ export default function LoginScreen() {
         >
           <View style={styles.brandBlock}>
             <View style={styles.logoMark}>
-              <LogIn size={22} color={tokens.brand.fg} strokeWidth={2.4} />
+              <KeyRound size={22} color={tokens.brand.fg} strokeWidth={2.4} />
             </View>
             <Text style={styles.brandName}>OpsBoard</Text>
-            <Text style={styles.brandTagline}>Operaciones internas · Grupo Prelar</Text>
+            <Text style={styles.brandTagline}>Recuperar acceso</Text>
           </View>
 
           <Card padding="lg" elevation="card" style={styles.formCard}>
-            <Text style={styles.title}>Iniciar sesión</Text>
-            <Text style={styles.subtitle}>Accedé con tu cuenta corporativa</Text>
+            {sent ? (
+              <>
+                <Text style={styles.title}>Revisá tu correo</Text>
+                <Text style={styles.subtitle}>
+                  Si la cuenta existe, vas a recibir un enlace para restablecer tu contraseña.
+                  El link expira en 1 hora.
+                </Text>
+                <View style={styles.form}>
+                  <Button
+                    onPress={() => router.replace('/login')}
+                    size="lg"
+                    fullWidth
+                    icon={ArrowLeft}
+                    variant="secondary"
+                  >
+                    Volver al login
+                  </Button>
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.title}>¿Olvidaste tu contraseña?</Text>
+                <Text style={styles.subtitle}>
+                  Ingresá tu correo y te enviamos un enlace para crear una nueva.
+                </Text>
 
-            <View style={styles.form}>
-              <Controller
-                control={control}
-                name="email"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Correo electrónico"
-                    icon={Mail}
-                    placeholder="nombre@grupoprelar.com"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    keyboardType="email-address"
-                    value={value}
-                    onChangeText={onChange}
-                    error={errors.email?.message}
+                <View style={styles.form}>
+                  <Controller
+                    control={control}
+                    name="email"
+                    render={({ field: { onChange, value } }) => (
+                      <Input
+                        label="Correo electrónico"
+                        icon={Mail}
+                        placeholder="nombre@grupoprelar.com"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        keyboardType="email-address"
+                        value={value}
+                        onChangeText={onChange}
+                        error={errors.email?.message}
+                      />
+                    )}
                   />
-                )}
-              />
 
-              <Controller
-                control={control}
-                name="password"
-                render={({ field: { onChange, value } }) => (
-                  <Input
-                    label="Contraseña"
-                    icon={Lock}
-                    placeholder="••••••••"
-                    secureTextEntry
-                    autoComplete="password"
-                    value={value}
-                    onChangeText={onChange}
-                    error={errors.password?.message}
-                  />
-                )}
-              />
-
-              <Button
-                onPress={handleSubmit(onSubmit)}
-                loading={submitting}
-                size="lg"
-                fullWidth
-                iconRight={ArrowRight}
-              >
-                Entrar
-              </Button>
-
-              <View style={styles.forgotRow}>
-                <Link href="/forgot-password" style={styles.footerLink}>
-                  ¿Olvidaste tu contraseña?
-                </Link>
-              </View>
-            </View>
+                  <Button
+                    onPress={handleSubmit(onSubmit)}
+                    loading={submitting}
+                    size="lg"
+                    fullWidth
+                    iconRight={ArrowRight}
+                  >
+                    Enviar enlace
+                  </Button>
+                </View>
+              </>
+            )}
           </Card>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              Tu cuenta la crea un administrador.
-            </Text>
+            <Link href="/login" style={styles.footerLink}>
+              Volver al inicio de sesión
+            </Link>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -150,11 +152,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
-
-  brandBlock: {
-    alignItems: 'center',
-    marginBottom: spacing[6],
-  },
+  brandBlock: { alignItems: 'center', marginBottom: spacing[6] },
   logoMark: {
     width: 48,
     height: 48,
@@ -176,10 +174,7 @@ const styles = StyleSheet.create({
     color: tokens.text.muted,
     marginTop: spacing[1],
   },
-
-  formCard: {
-    width: '100%',
-  },
+  formCard: { width: '100%' },
   title: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.semibold as '600',
@@ -191,21 +186,12 @@ const styles = StyleSheet.create({
     color: tokens.text.secondary,
     marginTop: spacing[1],
   },
-  form: {
-    marginTop: spacing[5],
-    gap: spacing[3],
-  },
-
-  forgotRow: {
-    alignItems: 'center',
-    marginTop: spacing[1],
-  },
+  form: { marginTop: spacing[5], gap: spacing[3] },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
     marginTop: spacing[5],
   },
-  footerText: { color: tokens.text.secondary, fontSize: typography.size.sm },
   footerLink: {
     color: tokens.brand[600],
     fontSize: typography.size.sm,

@@ -19,7 +19,10 @@ import {
   Inbox,
   Activity as ActivityIcon,
   ChevronRight,
+  LogOut,
 } from 'lucide-react-native';
+
+import { signOut } from '../../../lib/auth';
 
 import { MonthCalendar } from '../../../components/calendar/MonthCalendar';
 import { WeekView } from '../../../components/calendar/WeekView';
@@ -159,14 +162,23 @@ export default function HomeScreen() {
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.date}>{todayHeadline()}</Text>
           </View>
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onPress={() => router.push('/tasks/new')}
-          >
-            Nueva
-          </Button>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Plus}
+              onPress={() => router.push('/tasks/new')}
+            >
+              Nueva
+            </Button>
+            <Pressable
+              onPress={() => signOut()}
+              style={styles.logoutBtn}
+              accessibilityLabel="Cerrar sesión"
+            >
+              <LogOut size={18} color={tokens.text.muted as string} strokeWidth={1.8} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Stats */}
@@ -403,6 +415,16 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     marginBottom: spacing[5],
     gap: spacing[3],
+  },
+  logoutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.bg.surface,
+    borderWidth: 1,
+    borderColor: tokens.border.subtle,
   },
   greeting: {
     fontSize: typography.size.sm,
