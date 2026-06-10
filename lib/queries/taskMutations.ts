@@ -2,6 +2,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
 import { TaskPriority, TaskStatus } from './tasks';
 
+export type RecurrenceFreq = 'daily' | 'weekly' | 'monthly';
+
+export interface RecurrenceRule {
+  freq: RecurrenceFreq;
+  interval: number;
+}
+
 export interface TaskInput {
   area_id: string;
   title: string;
@@ -10,6 +17,7 @@ export interface TaskInput {
   priority?: TaskPriority;
   due_date?: string | null;
   progress?: number;
+  recurrence_rule?: RecurrenceRule | null;
 }
 
 export interface TaskRecord {
@@ -22,6 +30,7 @@ export interface TaskRecord {
   progress: number;
   due_date: string | null;
   archived_at: string | null;
+  recurrence_rule: RecurrenceRule | null;
 }
 
 export function useTask(taskId: string | undefined) {
@@ -31,7 +40,7 @@ export function useTask(taskId: string | undefined) {
     queryFn: async (): Promise<TaskRecord> => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, area_id, title, description, status, priority, progress, due_date, archived_at')
+        .select('id, area_id, title, description, status, priority, progress, due_date, archived_at, recurrence_rule')
         .eq('id', taskId!)
         .single();
       if (error) throw error;

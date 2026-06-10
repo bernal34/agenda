@@ -37,6 +37,8 @@ import { dmyToIso, isoToDmy, isValidDmy } from '../../../lib/dateFormat';
 import { notify } from '../../../lib/notify';
 import { useBoardStages } from '../../../lib/queries/stages';
 import {
+  RecurrenceFreq,
+  RecurrenceRule,
   useArchiveTask,
   useDeleteTask,
   useTask,
@@ -54,6 +56,13 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] 
 
 const PROGRESS_STEPS = [0, 25, 50, 75, 100];
 
+const RECURRENCE_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = [
+  { value: 'none',    label: 'No se repite' },
+  { value: 'daily',   label: 'Diaria' },
+  { value: 'weekly',  label: 'Semanal' },
+  { value: 'monthly', label: 'Mensual' },
+];
+
 export default function EditTaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -69,6 +78,8 @@ export default function EditTaskScreen() {
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [dueDate, setDueDate] = useState('');
   const [progress, setProgress] = useState(0);
+  const [recFreq, setRecFreq] = useState<RecurrenceFreq | 'none'>('none');
+  const [recInterval, setRecInterval] = useState('1');
   const [dirty, setDirty] = useState(false);
 
   const stagesQ = useBoardStages(task?.area_id);
@@ -81,6 +92,8 @@ export default function EditTaskScreen() {
     setPriority(task.priority);
     setDueDate(isoToDmy(task.due_date));
     setProgress(task.progress);
+    setRecFreq(task.recurrence_rule?.freq ?? 'none');
+    setRecInterval(String(task.recurrence_rule?.interval ?? 1));
     setDirty(false);
   }, [task]);
 
@@ -94,6 +107,9 @@ export default function EditTaskScreen() {
       notify('Fecha inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
       return;
     }
+    const parsedInterval = Math.max(1, parseInt(recInterval || '1', 10) || 1);
+    const rule: RecurrenceRule | null =
+      recFreq === 'none' ? null : { freq: recFreq, interval: parsedInterval };
     try {
       await updateMut.mutateAsync({
         id: task.id,
@@ -103,6 +119,7 @@ export default function EditTaskScreen() {
         priority,
         due_date: dmyToIso(dueDate),
         progress,
+        recurrence_rule: rule,
       });
       setDirty(false);
     } catch (err) {
@@ -256,6 +273,52 @@ export default function EditTaskScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
+
+          <View style={styles.section}>
+            <SectionHeader title="Recurrencia" />
+            <View style={styles.optionsRow}>
+              {RECURRENCE_OPTIONS.map((opt) => {
+                const active = recFreq === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => { setRecFreq(opt.value); bump(); }}
+                    style={[
+                      styles.option,
+                      active && { backgroundColor: palette.brand[50], borderColor: palette.brand[500] },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        active && { color: palette.brand[700], fontWeight: typography.weight.semibold as '600' },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            {recFreq !== 'none' && (
+              <View style={styles.recIntervalRow}>
+                <Text style={styles.recIntervalLabel}>Cada</Text>
+                <TextInput
+                  style={styles.recIntervalInput}
+                  value={recInterval}
+                  onChangeText={(v) => { setRecInterval(v.replace(/[^0-9]/g, '')); bump(); }}
+                  keyboardType="number-pad"
+                  maxLength={3}
+                />
+                <Text style={styles.recIntervalLabel}>
+                  {recFreq === 'daily' ? 'día(s)' : recFreq === 'weekly' ? 'semana(s)' : 'mes(es)'}
+                </Text>
+                <Text style={styles.recHint}>
+                  Se crea una nueva instancia al marcarla como hecha.
+                </Text>
+              </View>
+            )}
+          </View>
 
           <View style={styles.section}>
             <SectionHeader title={`Progreso · ${progress}%`} />
@@ -424,4 +487,33 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.semibold as '600',
   },
   progBtnTextActive: { color: tokens.brand.fg },
+
+  recIntervalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    flexWrap: 'wrap',
+    marginTop: spacing[2],
+  },
+  recIntervalLabel: {
+    fontSize: typography.size.sm,
+    color: tokens.text.secondary,
+  },
+  recIntervalInput: {
+    width: 56,
+    paddingVertical: 6,
+    paddingHorizontal: spacing[2],
+    borderWidth: 1,
+    borderColor: tokens.border.strong,
+    borderRadius: radius.md,
+    backgroundColor: tokens.bg.surface,
+    color: tokens.text.primary,
+    textAlign: 'center',
+    fontSize: typography.size.sm,
+  },
+  recHint: {
+    fontSize: typography.size.xs,
+    color: tokens.text.muted,
+    flexBasis: '100%',
+  },
 });
