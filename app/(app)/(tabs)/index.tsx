@@ -257,7 +257,7 @@ export default function HomeScreen() {
                 key={a.id}
                 label={a.name}
                 active={areaFilter === a.id}
-                onPress={() => setAreaFilter(a.id)}
+                onPress={() => router.push(`/boards/${a.id}` as never)}
                 color={a.color}
               />
             ))}
