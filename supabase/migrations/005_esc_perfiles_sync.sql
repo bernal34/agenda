@@ -1,0 +1,17 @@
+-- Migration: 005_esc_perfiles_sync
+--
+-- Auto-sync esc.perfiles when a user gets/loses esc app access from the
+-- portal admin. Bridges the portal's core.user_app_access permissions to
+-- Esc's internal esc.perfiles.rol model that the legacy RLS policies use.
+--
+-- Mapping:
+--   super_admin → 'admin'
+--   otherwise   → 'asesor' (default)
+--
+-- Triggers:
+--   trg_sync_esc_perfil_grant   AFTER INSERT on core.user_app_access
+--   trg_sync_esc_perfil_revoke  AFTER DELETE on core.user_app_access
+--   trg_sync_esc_rol_change     AFTER INSERT/DELETE on core.user_global_roles
+--
+-- Status: APPLIED to mgfjswovpfrzjutmbevr on 2026-06-09.
+-- Full SQL preserved in Supabase migration history.
