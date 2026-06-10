@@ -19,6 +19,7 @@ function task(partial: Partial<MyTask>): MyTask {
     due_date: null,
     area: null,
     labels: [],
+    snoozed_until: null,
     ...partial,
   };
 }

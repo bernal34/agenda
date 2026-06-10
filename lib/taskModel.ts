@@ -16,9 +16,12 @@ export interface MyTask {
   due_date: string | null;
   area: { id: string; name: string; color: string; slug: string } | null;
   labels: string[];
+  snoozed_until: string | null;
 }
 
 export function mapTask(t: any): MyTask {
+  const assignees = (t.assignees ?? t.task_assignees ?? []) as { snoozed_until?: string | null }[];
+  const snooze = assignees.length > 0 ? assignees[0].snoozed_until ?? null : null;
   return {
     id: t.id,
     title: t.title,
@@ -31,5 +34,6 @@ export function mapTask(t: any): MyTask {
     labels: ((t.task_labels ?? []) as { label: string }[])
       .map((l) => l.label)
       .sort(),
+    snoozed_until: snooze,
   };
 }

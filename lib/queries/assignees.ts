@@ -93,6 +93,45 @@ export function useAddAssignee(taskId: string | undefined) {
   });
 }
 
+export function useSnoozeTask(taskId: string | undefined) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (until: Date | null) => {
+      if (!taskId) throw new Error('Sin tarea');
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sin sesión');
+      const { error } = await supabase
+        .from('task_assignees')
+        .update({ snoozed_until: until ? until.toISOString() : null })
+        .eq('task_id', taskId)
+        .eq('user_id', user.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['task-assignees', taskId] });
+      qc.invalidateQueries({ queryKey: ['my-tasks'] });
+      qc.invalidateQueries({ queryKey: ['task-snooze', taskId] });
+    },
+  });
+}
+
+export function useMySnooze(taskId: string | undefined, userId: string | undefined) {
+  return useQuery({
+    queryKey: ['task-snooze', taskId, userId],
+    enabled: !!taskId && !!userId,
+    queryFn: async (): Promise<string | null> => {
+      const { data, error } = await supabase
+        .from('task_assignees')
+        .select('snoozed_until')
+        .eq('task_id', taskId!)
+        .eq('user_id', userId!)
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.snoozed_until ?? null) as string | null;
+    },
+  });
+}
+
 export function useRemoveAssignee(taskId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({

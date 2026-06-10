@@ -13,14 +13,17 @@ export function useMyTasks(userId: string | undefined) {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          'id, title, description, status, priority, progress, due_date, area:areas(id, name, color, slug), task_labels(label), assignees:task_assignees!inner(user_id)',
+          'id, title, description, status, priority, progress, due_date, area:areas(id, name, color, slug), task_labels(label), assignees:task_assignees!inner(user_id, snoozed_until)',
         )
         .eq('assignees.user_id', userId!)
         .is('archived_at', null)
         .order('due_date', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
-      return (data ?? []).map(mapTask);
+      const nowIso = new Date().toISOString();
+      return (data ?? [])
+        .map(mapTask)
+        .filter((t) => !t.snoozed_until || t.snoozed_until <= nowIso);
     },
   });
 }

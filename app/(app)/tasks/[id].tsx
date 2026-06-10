@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Archive, ArchiveRestore, Calendar as CalendarIcon, Trash2 } from 'lucide-react-native';
+import { Archive, ArchiveRestore, BellOff, Calendar as CalendarIcon, Trash2 } from 'lucide-react-native';
 
 import { TaskAssignees } from '../../../components/tasks/TaskAssignees';
 import { TaskAttachments } from '../../../components/tasks/TaskAttachments';
@@ -20,6 +20,7 @@ import { TaskComments } from '../../../components/tasks/TaskComments';
 import { TaskDependencies } from '../../../components/tasks/TaskDependencies';
 import { TaskLabels } from '../../../components/tasks/TaskLabels';
 import { TaskSubtasks } from '../../../components/tasks/TaskSubtasks';
+import { useMySnooze, useSnoozeTask } from '../../../lib/queries/assignees';
 import {
   Button,
   Input,
@@ -71,6 +72,8 @@ export default function EditTaskScreen() {
   const updateMut = useUpdateTask();
   const deleteMut = useDeleteTask();
   const archiveMut = useArchiveTask();
+  const snoozeMut = useSnoozeTask(id);
+  const snoozeQ = useMySnooze(id, userId);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -141,6 +144,20 @@ export default function EditTaskScreen() {
     } catch (err) {
       notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error');
     }
+  };
+
+  const handleSnooze = async (kind: '+1d' | '+1w' | 'clear') => {
+    if (kind === 'clear') {
+      try { await snoozeMut.mutateAsync(null); }
+      catch (err) { notify('No se pudo quitar', err instanceof Error ? err.message : 'Error'); }
+      return;
+    }
+    const d = new Date();
+    if (kind === '+1d') d.setDate(d.getDate() + 1);
+    if (kind === '+1w') d.setDate(d.getDate() + 7);
+    d.setHours(9, 0, 0, 0);
+    try { await snoozeMut.mutateAsync(d); }
+    catch (err) { notify('No se pudo posponer', err instanceof Error ? err.message : 'Error'); }
   };
 
   const handleArchiveToggle = async () => {
@@ -320,6 +337,12 @@ export default function EditTaskScreen() {
             )}
           </View>
 
+          <SnoozeSection
+            value={snoozeQ.data ?? null}
+            pending={snoozeMut.isPending}
+            onPick={handleSnooze}
+          />
+
           <View style={styles.section}>
             <SectionHeader title={`Progreso · ${progress}%`} />
             <View style={styles.progressRow}>
@@ -371,6 +394,57 @@ export default function EditTaskScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+  );
+}
+
+function SnoozeSection({
+  value,
+  pending,
+  onPick,
+}: {
+  value: string | null;
+  pending: boolean;
+  onPick: (kind: '+1d' | '+1w' | 'clear') => void;
+}) {
+  const active = value && new Date(value) > new Date();
+  const label = active
+    ? new Date(value!).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+    : null;
+  return (
+    <View style={styles.section}>
+      <SectionHeader title="Posponer" />
+      {active && (
+        <View style={styles.snoozeBanner}>
+          <BellOff size={12} color={palette.amber[700]} strokeWidth={2.2} />
+          <Text style={styles.snoozeBannerText}>Oculta de Mis tareas hasta {label}</Text>
+        </View>
+      )}
+      <View style={styles.optionsRow}>
+        <Pressable
+          onPress={() => onPick('+1d')}
+          disabled={pending}
+          style={[styles.option, pending && { opacity: 0.6 }]}
+        >
+          <Text style={styles.optionText}>+1 día</Text>
+        </Pressable>
+        <Pressable
+          onPress={() => onPick('+1w')}
+          disabled={pending}
+          style={[styles.option, pending && { opacity: 0.6 }]}
+        >
+          <Text style={styles.optionText}>+1 semana</Text>
+        </Pressable>
+        {active && (
+          <Pressable
+            onPress={() => onPick('clear')}
+            disabled={pending}
+            style={[styles.option, { borderColor: palette.red[300] }, pending && { opacity: 0.6 }]}
+          >
+            <Text style={[styles.optionText, { color: palette.red[600] }]}>Quitar</Text>
+          </Pressable>
+        )}
+      </View>
+    </View>
   );
 }
 
@@ -515,5 +589,25 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     color: tokens.text.muted,
     flexBasis: '100%',
+  },
+
+  snoozeBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: palette.amber[50],
+    borderWidth: 1,
+    borderColor: palette.amber[200],
+    borderRadius: radius.md,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 6,
+    alignSelf: 'flex-start',
+    marginTop: spacing[1],
+    marginBottom: spacing[2],
+  },
+  snoozeBannerText: {
+    fontSize: typography.size.xs,
+    color: palette.amber[700],
+    fontWeight: typography.weight.medium as '500',
   },
 });
