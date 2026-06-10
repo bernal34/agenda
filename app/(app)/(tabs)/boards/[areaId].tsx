@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { GestureDetector } from 'react-native-gesture-handler';
-import { Archive, ArrowRight, CheckSquare, GripVertical, Plus, Trash2, Users, X } from 'lucide-react-native';
+import { Archive, ArrowRight, CheckSquare, GripVertical, LayoutTemplate, Plus, Trash2, Users, X } from 'lucide-react-native';
 
 import { useColumnDrag } from '../../../../components/board/DraggableColumn';
 import { DragPreview, DraggableTaskCard } from '../../../../components/tasks/DraggableTaskCard';
@@ -292,6 +292,14 @@ export default function KanbanBoard() {
               >
                 <CheckSquare size={14} color={tokens.brand[600]} strokeWidth={2.2} />
                 <Text style={styles.membersBtnText}>Seleccionar</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(`/templates/${areaId}` as never)}
+                hitSlop={6}
+                style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
+              >
+                <LayoutTemplate size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                <Text style={styles.membersBtnText}>Plantillas</Text>
               </Pressable>
               {area && !area.personal && (
                 <Pressable
