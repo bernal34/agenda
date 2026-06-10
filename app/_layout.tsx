@@ -36,7 +36,7 @@ function useProtectedRoute() {
   useEffect(() => {
     if (status === 'loading') return;
     const inAuthGroup = segments[0] === '(auth)';
-    const onResetScreen = segments[1] === 'reset-password';
+    const onResetScreen = (segments as string[])[1] === 'reset-password';
 
     if (recoveryMode) {
       if (!onResetScreen) router.replace('/reset-password');

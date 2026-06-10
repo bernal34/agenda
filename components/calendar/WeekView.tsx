@@ -3,22 +3,10 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
 
 import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { sameDay as sameIso, startOfWeek, toIso } from '../../lib/calendarGrid';
 import { MyTask } from '../../lib/queries/tasks';
 
 const WEEKDAYS_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-function pad(n: number) { return n < 10 ? `0${n}` : `${n}`; }
-function toIso(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-function sameIso(a: Date, b: Date) { return toIso(a) === toIso(b); }
-function startOfWeek(d: Date) {
-  // Lunes = primer día
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const dow = (x.getDay() + 6) % 7;
-  x.setDate(x.getDate() - dow);
-  return x;
-}
 
 interface Props {
   weekAnchor: Date;

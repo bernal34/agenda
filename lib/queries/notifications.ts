@@ -1,21 +1,10 @@
 import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabase';
+import { countUnread, prependNotification } from '../notificationModel';
+import type { AppNotification, NotificationKind } from '../notificationModel';
 
-export type NotificationKind =
-  | 'task_assigned'
-  | 'task_due'
-  | 'mention'
-  | 'comment';
-
-export interface AppNotification {
-  id: string;
-  user_id: string;
-  kind: NotificationKind;
-  payload: Record<string, unknown>;
-  read_at: string | null;
-  created_at: string;
-}
+export type { AppNotification, NotificationKind };
 
 export function useMyNotifications(userId: string | undefined) {
   return useQuery({
@@ -48,11 +37,9 @@ export function useNotificationsRealtime(userId: string | undefined) {
         { event: 'INSERT', schema: 'ops', table: 'notifications', filter: `user_id=eq.${userId}` },
         (payload) => {
           const row = payload.new as AppNotification;
-          qc.setQueryData<AppNotification[]>(['notifications', userId], (prev) => {
-            if (!prev) return [row];
-            if (prev.some((n) => n.id === row.id)) return prev;
-            return [row, ...prev];
-          });
+          qc.setQueryData<AppNotification[]>(['notifications', userId], (prev) =>
+            prependNotification(prev, row),
+          );
         },
       )
       .subscribe();
@@ -64,8 +51,7 @@ export function useNotificationsRealtime(userId: string | undefined) {
 
 export function useUnreadCount(userId: string | undefined) {
   const q = useMyNotifications(userId);
-  const count = (q.data ?? []).filter((n) => !n.read_at).length;
-  return count;
+  return countUnread(q.data);
 }
 
 export function useMarkRead() {

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, LayoutGrid, MessageSquare, Bell, User } from 'lucide-react-native';
 
 import { ShortcutsDialog, type ShortcutItem } from '../../../components/ui';
@@ -44,6 +45,7 @@ function NotifTabIcon({ focused, color }: IconProps) {
 export default function TabsLayout() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   useNotificationsRealtime(userId);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
@@ -81,7 +83,13 @@ export default function TabsLayout() {
         headerShown: false,
         tabBarActiveTintColor: tokens.brand[600],
         tabBarInactiveTintColor: tokens.text.muted,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 58 + Math.max(insets.bottom, 8) + 6,
+            paddingBottom: Math.max(insets.bottom, 8) + 6,
+          },
+        ],
         tabBarLabelStyle: styles.tabLabel,
         tabBarItemStyle: { paddingTop: 6 },
       }}
@@ -129,6 +137,9 @@ export default function TabsLayout() {
           ),
         }}
       />
+      {/* Rutas de detalle: no deben aparecer como tabs */}
+      <Tabs.Screen name="boards/[areaId]" options={{ href: null }} />
+      <Tabs.Screen name="chat/[channelId]" options={{ href: null }} />
     </Tabs>
     </>
   );
@@ -139,8 +150,6 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.bg.surface,
     borderTopColor: tokens.border.subtle,
     borderTopWidth: 1,
-    height: 64,
-    paddingBottom: Platform.OS === 'ios' ? 6 : 8,
     paddingTop: 4,
     ...shadow.soft,
   },

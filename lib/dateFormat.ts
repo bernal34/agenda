@@ -22,8 +22,13 @@ export function dmyToIso(dmy: string | null | undefined): string | null {
 
 export function isValidDmy(dmy: string): boolean {
   if (!dmy) return true; // vacío es válido (sin fecha)
-  const iso = dmyToIso(dmy);
-  if (!iso) return false;
-  const d = new Date(iso + 'T00:00:00');
-  return !isNaN(d.getTime());
+  const m = dmy.trim().match(DMY_RE);
+  if (!m) return false;
+  const dd = Number(m[1]);
+  const mm = Number(m[2]);
+  const yyyy = Number(m[3]);
+  // Date() desborda fechas inválidas (31/02 → 3 de marzo), así que
+  // verificamos que los componentes no hayan cambiado.
+  const d = new Date(yyyy, mm - 1, dd);
+  return d.getFullYear() === yyyy && d.getMonth() === mm - 1 && d.getDate() === dd;
 }
