@@ -17,6 +17,7 @@ import { Archive, ArchiveRestore, Calendar as CalendarIcon, Trash2 } from 'lucid
 import { TaskAssignees } from '../../../components/tasks/TaskAssignees';
 import { TaskAttachments } from '../../../components/tasks/TaskAttachments';
 import { TaskComments } from '../../../components/tasks/TaskComments';
+import { TaskDependencies } from '../../../components/tasks/TaskDependencies';
 import { TaskLabels } from '../../../components/tasks/TaskLabels';
 import { TaskSubtasks } from '../../../components/tasks/TaskSubtasks';
 import {
@@ -278,6 +279,7 @@ export default function EditTaskScreen() {
 
           <TaskAssignees taskId={task.id} areaId={task.area_id} currentUserId={userId} />
           <TaskLabels taskId={task.id} areaId={task.area_id} />
+          <TaskDependencies taskId={task.id} areaId={task.area_id} />
           <TaskSubtasks taskId={task.id} />
           <TaskAttachments taskId={task.id} />
           <TaskComments taskId={task.id} areaId={task.area_id} userId={userId} />
