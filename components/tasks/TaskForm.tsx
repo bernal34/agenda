@@ -199,15 +199,8 @@ export function TaskForm({
           </View>
         </View>
 
-        <Input
-          label="Fecha límite"
-          icon={CalendarIcon}
-          value={dueDate}
-          onChangeText={setDueDate}
-          placeholder="DD/MM/YYYY"
-          autoCapitalize="none"
-          autoCorrect={false}
-        />
+        <DueDateField value={dueDate} onChange={setDueDate} />
+
 
         {showProgress && (
           <View style={styles.section}>
@@ -256,6 +249,66 @@ export function TaskForm({
         )}
       </ScrollView>
     </KeyboardAvoidingView>
+  );
+}
+
+/**
+ * Date picker: native HTML date input on web (opens browser calendar),
+ * plain text input on native (DD/MM/YYYY format). Same DueDateField API.
+ */
+function DueDateField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  if (Platform.OS === 'web') {
+    const isoValue = dmyToIso(value) ?? '';
+    return (
+      <View style={{ gap: spacing[1] }}>
+        <Text style={styles.label}>Fecha límite</Text>
+        {/* react-native-web renders raw React elements as DOM */}
+        {(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const InputEl: any = 'input';
+          return (
+            <InputEl
+              type="date"
+              value={isoValue}
+              onChange={(e: { target: { value: string } }) => {
+                const v = e.target.value;
+                onChange(isoToDmy(v) ?? '');
+              }}
+              style={{
+                height: 40,
+                paddingLeft: 12,
+                paddingRight: 12,
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                fontSize: 16,
+                color: '#0f172a',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+          );
+        })()}
+      </View>
+    );
+  }
+
+  return (
+    <Input
+      label="Fecha límite"
+      icon={CalendarIcon}
+      value={value}
+      onChangeText={onChange}
+      placeholder="DD/MM/YYYY"
+      autoCapitalize="none"
+      autoCorrect={false}
+    />
   );
 }
 
