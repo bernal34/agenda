@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { GestureDetector } from 'react-native-gesture-handler';
-import { GripVertical, Plus, Trash2, Users, X } from 'lucide-react-native';
+import { Archive, ArrowRight, CheckSquare, GripVertical, Plus, Trash2, Users, X } from 'lucide-react-native';
 
 import { useColumnDrag } from '../../../../components/board/DraggableColumn';
 import { DragPreview, DraggableTaskCard } from '../../../../components/tasks/DraggableTaskCard';
@@ -30,6 +30,8 @@ import {
 import { useUpdateTask } from '../../../../lib/queries/taskMutations';
 import { useAreaTasks, MyTask } from '../../../../lib/queries/tasks';
 import { useAuthStore } from '../../../../stores/authStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { supabase } from '../../../../lib/supabase';
 import {
   palette,
   radius,
@@ -108,6 +110,88 @@ export default function KanbanBoard() {
   const [newStageLabel, setNewStageLabel] = useState('');
   const [newStageColor, setNewStageColor] = useState(STAGE_COLORS[4]);
   const [editingStage, setEditingStage] = useState<BoardStage | null>(null);
+
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [moveMenuOpen, setMoveMenuOpen] = useState(false);
+  const [bulkPending, setBulkPending] = useState(false);
+  const qc = useQueryClient();
+
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+    setMoveMenuOpen(false);
+  };
+
+  const toggleSelected = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const refreshAfterBulk = () => {
+    qc.invalidateQueries({ queryKey: ['area-tasks', areaId] });
+    qc.invalidateQueries({ queryKey: ['my-tasks'] });
+  };
+
+  const bulkMoveToStage = async (stageCode: string) => {
+    if (selectedIds.size === 0) return;
+    setBulkPending(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: stageCode })
+        .in('id', Array.from(selectedIds));
+      if (error) throw error;
+      refreshAfterBulk();
+      exitSelection();
+    } catch (err) {
+      notify('No se pudo mover', err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBulkPending(false);
+    }
+  };
+
+  const bulkArchive = async () => {
+    if (selectedIds.size === 0) return;
+    if (typeof window !== 'undefined' && !window.confirm(`¿Archivar ${selectedIds.size} tarea(s)?`)) return;
+    setBulkPending(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ archived_at: new Date().toISOString() })
+        .in('id', Array.from(selectedIds));
+      if (error) throw error;
+      refreshAfterBulk();
+      exitSelection();
+    } catch (err) {
+      notify('No se pudo archivar', err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBulkPending(false);
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar ${selectedIds.size} tarea(s)? Esto no se puede deshacer.`)) return;
+    setBulkPending(true);
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .delete()
+        .in('id', Array.from(selectedIds));
+      if (error) throw error;
+      refreshAfterBulk();
+      exitSelection();
+    } catch (err) {
+      notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error');
+    } finally {
+      setBulkPending(false);
+    }
+  };
 
   const measureColumn = (code: string) => {
     const ref = columnRefs.current[code];
@@ -190,20 +274,37 @@ export default function KanbanBoard() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader
-        title={area?.name ?? 'Tablero'}
+        title={selectionMode ? `${selectedIds.size} seleccionada(s)` : area?.name ?? 'Tablero'}
         accent={area?.color}
         fallbackRoute="/boards"
         right={
-          area && !area.personal ? (
-            <Pressable
-              onPress={() => router.push(`/area-members/${areaId}` as never)}
-              hitSlop={6}
-              style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
-            >
-              <Users size={14} color={tokens.brand[600]} strokeWidth={2.2} />
-              <Text style={styles.membersBtnText}>Miembros</Text>
+          selectionMode ? (
+            <Pressable onPress={exitSelection} hitSlop={6} style={styles.membersBtn}>
+              <X size={14} color={tokens.text.secondary} strokeWidth={2} />
+              <Text style={styles.membersBtnText}>Cancelar</Text>
             </Pressable>
-          ) : null
+          ) : (
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <Pressable
+                onPress={() => setSelectionMode(true)}
+                hitSlop={6}
+                style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
+              >
+                <CheckSquare size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                <Text style={styles.membersBtnText}>Seleccionar</Text>
+              </Pressable>
+              {area && !area.personal && (
+                <Pressable
+                  onPress={() => router.push(`/area-members/${areaId}` as never)}
+                  hitSlop={6}
+                  style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
+                >
+                  <Users size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                  <Text style={styles.membersBtnText}>Miembros</Text>
+                </Pressable>
+              )}
+            </View>
+          )
         }
       />
 
@@ -250,7 +351,12 @@ export default function KanbanBoard() {
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}
               onDragEnd={handleDrop}
-              onTaskOpen={(t) => router.push(`/tasks/${t.id}` as never)}
+              onTaskOpen={(t) => {
+                if (selectionMode) toggleSelected(t.id);
+                else router.push(`/tasks/${t.id}` as never);
+              }}
+              selectionMode={selectionMode}
+              selectedIds={selectedIds}
               onAddTask={() => router.push(`/tasks/new?area=${areaId}&status=${stage.code}` as never)}
             />
           ))}
@@ -313,6 +419,61 @@ export default function KanbanBoard() {
         </ScrollView>
       )}
 
+      {selectionMode && (
+        <View style={styles.bulkBar}>
+          <Text style={styles.bulkCount}>{selectedIds.size}</Text>
+          {moveMenuOpen ? (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 6 }}>
+              {stages.map((s) => (
+                <Pressable
+                  key={s.id}
+                  onPress={() => bulkMoveToStage(s.code)}
+                  style={({ pressed }) => [
+                    styles.bulkChip,
+                    { borderColor: s.color },
+                    pressed && { backgroundColor: s.color + '14' },
+                  ]}
+                  disabled={bulkPending}
+                >
+                  <View style={[styles.statusDot, { backgroundColor: s.color }]} />
+                  <Text style={styles.bulkChipText}>{s.label}</Text>
+                </Pressable>
+              ))}
+              <Pressable onPress={() => setMoveMenuOpen(false)} hitSlop={6} style={styles.bulkChip}>
+                <X size={12} color={tokens.text.muted} strokeWidth={2} />
+              </Pressable>
+            </ScrollView>
+          ) : (
+            <>
+              <Pressable
+                onPress={() => setMoveMenuOpen(true)}
+                disabled={bulkPending || selectedIds.size === 0}
+                style={({ pressed }) => [styles.bulkAction, pressed && styles.bulkActionPressed]}
+              >
+                <ArrowRight size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                <Text style={styles.bulkActionText}>Mover</Text>
+              </Pressable>
+              <Pressable
+                onPress={bulkArchive}
+                disabled={bulkPending || selectedIds.size === 0}
+                style={({ pressed }) => [styles.bulkAction, pressed && styles.bulkActionPressed]}
+              >
+                <Archive size={14} color={palette.amber[700]} strokeWidth={2.2} />
+                <Text style={styles.bulkActionText}>Archivar</Text>
+              </Pressable>
+              <Pressable
+                onPress={bulkDelete}
+                disabled={bulkPending || selectedIds.size === 0}
+                style={({ pressed }) => [styles.bulkAction, pressed && styles.bulkActionPressed]}
+              >
+                <Trash2 size={14} color={palette.red[600]} strokeWidth={2.2} />
+                <Text style={[styles.bulkActionText, { color: palette.red[600] }]}>Eliminar</Text>
+              </Pressable>
+            </>
+          )}
+        </View>
+      )}
+
       {preview && (
         <DragPreview
           task={preview.task}
@@ -345,6 +506,8 @@ interface ColumnProps {
   onDragMove: (x: number, y: number) => void;
   onDragEnd: (taskId: string, x: number, y: number) => void;
   onTaskOpen: (t: MyTask) => void;
+  selectionMode: boolean;
+  selectedIds: Set<string>;
   onAddTask: () => void;
 }
 
@@ -366,6 +529,8 @@ function DraggableStageColumn({
   onDragMove,
   onDragEnd,
   onTaskOpen,
+  selectionMode,
+  selectedIds,
   onAddTask,
 }: ColumnProps) {
   const { gesture, animatedStyle } = useColumnDrag({ index, stride, total, onReorder });
@@ -424,6 +589,8 @@ function DraggableStageColumn({
               onDragStart={onDragStart}
               onDragMove={onDragMove}
               onDragEnd={onDragEnd}
+              selectable={selectionMode}
+              selected={selectedIds.has(t.id)}
             />
           ))
         )}
@@ -604,5 +771,66 @@ const styles = StyleSheet.create({
     color: tokens.brand[600],
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
+  },
+
+  bulkBar: {
+    position: 'absolute',
+    left: spacing[3],
+    right: spacing[3],
+    bottom: spacing[3],
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    backgroundColor: tokens.bg.surface,
+    borderWidth: 1,
+    borderColor: palette.brand[200],
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing[3],
+    paddingVertical: 8,
+    ...shadow.soft,
+  },
+  bulkCount: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.bold as '700',
+    color: palette.brand[700],
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    backgroundColor: palette.brand[50],
+    minWidth: 22,
+    textAlign: 'center',
+  },
+  bulkAction: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing[3],
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.subtle,
+    backgroundColor: tokens.bg.subtle,
+  },
+  bulkActionPressed: { backgroundColor: palette.brand[50], borderColor: palette.brand[200] },
+  bulkActionText: {
+    fontSize: typography.size.xs,
+    color: tokens.text.primary,
+    fontWeight: typography.weight.semibold as '600',
+  },
+  bulkChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: tokens.border.subtle,
+    backgroundColor: tokens.bg.surface,
+  },
+  bulkChipText: {
+    fontSize: typography.size.xs,
+    color: tokens.text.primary,
+    fontWeight: typography.weight.medium as '500',
   },
 });

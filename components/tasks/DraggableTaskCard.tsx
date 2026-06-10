@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   runOnJS,
   SharedValue,
@@ -8,9 +8,11 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Check } from 'lucide-react-native';
 
 import { TaskCard } from './TaskCard';
 import { MyTask } from '../../lib/queries/tasks';
+import { palette, radius, tokens } from '../../constants/theme';
 
 interface Props {
   task: MyTask;
@@ -18,9 +20,31 @@ interface Props {
   onDragStart: (task: MyTask, bounds: { x: number; y: number; w: number; h: number }) => void;
   onDragMove: (absX: number, absY: number) => void;
   onDragEnd: (taskId: string, absX: number, absY: number) => void;
+  selectable?: boolean;
+  selected?: boolean;
 }
 
-export function DraggableTaskCard({ task, onPress, onDragStart, onDragMove, onDragEnd }: Props) {
+export function DraggableTaskCard({
+  task,
+  onPress,
+  onDragStart,
+  onDragMove,
+  onDragEnd,
+  selectable,
+  selected,
+}: Props) {
+  if (selectable) {
+    return (
+      <Pressable onPress={onPress} style={styles.selectWrap}>
+        <View style={[styles.checkbox, selected && styles.checkboxOn]}>
+          {selected && <Check size={12} color="#fff" strokeWidth={3} />}
+        </View>
+        <View style={[{ flex: 1 }, selected && styles.cardSelected]}>
+          <TaskCard task={task} compact />
+        </View>
+      </Pressable>
+    );
+  }
   const wrapRef = useRef<View>(null);
   const opacity = useSharedValue(1);
 
@@ -101,4 +125,29 @@ export function DragPreview({ task, startX, startY, width, dragX, dragY }: Previ
 
 const styles = StyleSheet.create({
   preview: { pointerEvents: 'none' as any },
+  selectWrap: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  checkbox: {
+    marginTop: 8,
+    width: 18,
+    height: 18,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: tokens.border.strong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: tokens.bg.surface,
+  },
+  checkboxOn: {
+    backgroundColor: palette.brand[600],
+    borderColor: palette.brand[600],
+  },
+  cardSelected: {
+    borderRadius: radius.lg,
+    borderWidth: 2,
+    borderColor: palette.brand[400],
+  },
 });
