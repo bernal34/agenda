@@ -37,6 +37,12 @@ import {
 } from '../../../components/ui';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useMyTasks, MyTask, TaskStatus } from '../../../lib/queries/tasks';
+import {
+  countDoneToday,
+  countDueToday,
+  countOverdue,
+  groupByStatus,
+} from '../../../lib/taskStats';
 import { useAuthStore } from '../../../stores/authStore';
 import {
   palette,
@@ -118,19 +124,14 @@ export default function HomeScreen() {
   );
 
   const today = todayIso();
-  const todayCount = allTasks.filter((t) => t.due_date === today && t.status !== 'done').length;
-  const overdueCount = allTasks.filter(
-    (t) => t.due_date && t.due_date < today && t.status !== 'done',
-  ).length;
-  const doneTodayCount = allTasks.filter(
-    (t) => t.status === 'done' && t.due_date === today,
-  ).length;
+  const todayCount = countDueToday(allTasks, today);
+  const overdueCount = countOverdue(allTasks, today);
+  const doneTodayCount = countDoneToday(allTasks, today);
 
-  const grouped: Record<TaskStatus, MyTask[]> = useMemo(() => {
-    const g: Record<TaskStatus, MyTask[]> = { in_progress: [], todo: [], in_review: [], done: [] };
-    filtered.forEach((t) => g[t.status].push(t));
-    return g;
-  }, [filtered]);
+  const grouped: Record<TaskStatus, MyTask[]> = useMemo(
+    () => groupByStatus(filtered, STATUS_ORDER),
+    [filtered],
+  );
 
   const dayTasks = useMemo(
     () => filtered.filter((t) => t.due_date === selectedDay),

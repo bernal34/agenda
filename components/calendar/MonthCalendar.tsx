@@ -3,23 +3,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { buildMonthCells, sameDay } from '../../lib/calendarGrid';
 import { MyTask, TaskStatus } from '../../lib/queries/tasks';
 
 const WEEKDAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
-
-function pad(n: number) {
-  return n < 10 ? `0${n}` : `${n}`;
-}
-function toIso(d: Date) {
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-function sameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  );
-}
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
   todo:        palette.slate[500],
@@ -56,25 +43,7 @@ export function MonthCalendar({
     year: 'numeric',
   });
 
-  const cells = useMemo(() => {
-    const firstOfMonth = new Date(year, month, 1);
-    const lastOfMonth = new Date(year, month + 1, 0);
-    const startWeekday = (firstOfMonth.getDay() + 6) % 7;
-    const totalDays = lastOfMonth.getDate();
-    const total = startWeekday + totalDays;
-    const rows = Math.ceil(total / 7);
-    const arr: { date: Date | null; iso: string | null }[] = [];
-    for (let i = 0; i < rows * 7; i++) {
-      const dayNum = i - startWeekday + 1;
-      if (dayNum < 1 || dayNum > totalDays) {
-        arr.push({ date: null, iso: null });
-      } else {
-        const d = new Date(year, month, dayNum);
-        arr.push({ date: d, iso: toIso(d) });
-      }
-    }
-    return arr;
-  }, [year, month]);
+  const cells = useMemo(() => buildMonthCells(year, month), [year, month]);
 
   const tasksByDate = useMemo(() => {
     const m = new Map<string, MyTask[]>();
