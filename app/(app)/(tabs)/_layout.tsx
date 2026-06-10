@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, LayoutGrid, MessageSquare, Bell, User } from 'lucide-react-native';
+import { Calendar, Home, LayoutGrid, MessageSquare, Bell, User } from 'lucide-react-native';
 
 import { ShortcutsDialog, type ShortcutItem } from '../../../components/ui';
 import { useKeyboardShortcuts, type Binding } from '../../../lib/useKeyboardShortcuts';
@@ -55,6 +55,7 @@ export default function TabsLayout() {
       { combo: 'c',     description: 'Nueva tarea',           handler: () => router.push('/tasks/new' as never) },
       { combo: 'g+i',   description: 'Ir a Inicio',           handler: () => router.push('/' as never) },
       { combo: 'g+t',   description: 'Ir a Tableros',         handler: () => router.push('/boards' as never) },
+      { combo: 'g+a',   description: 'Ir a Calendario',       handler: () => router.push('/calendar' as never) },
       { combo: 'g+c',   description: 'Ir a Chats',            handler: () => router.push('/chat' as never) },
       { combo: 'g+n',   description: 'Ir a Notificaciones',   handler: () => router.push('/notifications' as never) },
       { combo: 'g+p',   description: 'Ir a Perfil',           handler: () => router.push('/profile' as never) },
@@ -109,6 +110,15 @@ export default function TabsLayout() {
           title: 'Tableros',
           tabBarIcon: ({ focused, color }) => (
             <TabIcon Icon={LayoutGrid} focused={focused} color={color as string} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="calendar"
+        options={{
+          title: 'Agenda',
+          tabBarIcon: ({ focused, color }) => (
+            <TabIcon Icon={Calendar} focused={focused} color={color as string} />
           ),
         }}
       />
