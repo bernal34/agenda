@@ -28,7 +28,6 @@ import { MonthCalendar } from '../../../components/calendar/MonthCalendar';
 import { WeekView } from '../../../components/calendar/WeekView';
 import { TaskCard } from '../../../components/tasks/TaskCard';
 import {
-  Button,
   Card,
   Chip,
   EmptyState,
@@ -163,23 +162,13 @@ export default function HomeScreen() {
             <Text style={styles.name}>{displayName}</Text>
             <Text style={styles.date}>{todayHeadline()}</Text>
           </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <Button
-              variant="primary"
-              size="sm"
-              icon={Plus}
-              onPress={() => router.push('/tasks/new')}
-            >
-              Nueva
-            </Button>
-            <Pressable
-              onPress={() => signOut()}
-              style={styles.logoutBtn}
-              accessibilityLabel="Cerrar sesión"
-            >
-              <LogOut size={18} color={tokens.text.muted as string} strokeWidth={1.8} />
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={() => signOut()}
+            style={styles.logoutBtn}
+            accessibilityLabel="Cerrar sesión"
+          >
+            <LogOut size={18} color={tokens.text.muted as string} strokeWidth={1.8} />
+          </Pressable>
         </View>
 
         {/* Stats */}
