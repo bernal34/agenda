@@ -121,6 +121,11 @@ export default function CalendarScreen() {
         ))}
       </View>
 
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
       <View style={styles.grid}>
         {grid.map((d) => {
           const iso = isoDate(d);
@@ -162,7 +167,7 @@ export default function CalendarScreen() {
         })}
       </View>
 
-      <ScrollView contentContainerStyle={styles.list} keyboardShouldPersistTaps="handled">
+      <View style={styles.list}>
         <Text style={styles.listHeader}>
           {selectedTasks.length === 0
             ? 'Sin tareas este día'
@@ -183,6 +188,7 @@ export default function CalendarScreen() {
             </View>
           </Pressable>
         ))}
+      </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -241,7 +247,7 @@ const styles = StyleSheet.create({
   },
   cell: {
     width: `${100 / 7}%`,
-    aspectRatio: 1,
+    height: 64,
     padding: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
@@ -283,9 +289,9 @@ const styles = StyleSheet.create({
     marginLeft: 2,
   },
 
+  scroll: { paddingBottom: spacing[10] },
   list: {
     padding: spacing[4],
-    paddingBottom: spacing[10],
     gap: spacing[2],
   },
   listHeader: {
