@@ -4,6 +4,9 @@
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "framework": null,
+  "rewrites": [
+    { "source": "/((?!assets/|_expo/|.*\\..*).*)", "destination": "/index.html" }
+  ],
   "headers": [
     {
       "source": "/sw.js",
