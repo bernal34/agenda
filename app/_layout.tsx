@@ -3,27 +3,14 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, Platform, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
 
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { tokens } from '../constants/theme';
-
-// SSO bridge from portal-hub: portal opens OpsBoard with ?ops_refresh_token=... in URL.
-// We consume the token, refresh the session, and strip it from the URL.
-async function consumePortalSsoToken() {
-  if (Platform.OS !== 'web' || typeof window === 'undefined') return;
-  const url = new URL(window.location.href);
-  const token = url.searchParams.get('ops_refresh_token');
-  if (!token) return;
-  url.searchParams.delete('ops_refresh_token');
-  window.history.replaceState({}, '', url.toString());
-  try {
-    await supabase.auth.refreshSession({ refresh_token: token });
-  } catch (err) {
-    console.warn('SSO bridge: refreshSession failed', err);
-  }
-}
+// SSO from the portal now uses Supabase magic-link redirects (hash tokens),
+// which detectSessionInUrl=true on the supabase client consumes automatically.
+// No manual handler needed.
 
 const queryClient = new QueryClient();
 
@@ -77,12 +64,10 @@ export default function RootLayout() {
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    (async () => {
-      await consumePortalSsoToken();
-      const { data } = await supabase.auth.getSession();
+    supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
       setHydrated(true);
-    })();
+    });
 
     const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'PASSWORD_RECOVERY') {
