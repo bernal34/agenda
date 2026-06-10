@@ -86,8 +86,8 @@ export default function TabsLayout() {
         tabBarStyle: [
           styles.tabBar,
           {
-            height: 56 + Math.max(insets.bottom, 8),
-            paddingBottom: Math.max(insets.bottom, 8),
+            height: 58 + Math.max(insets.bottom, 8) + 6,
+            paddingBottom: Math.max(insets.bottom, 8) + 6,
           },
         ],
         tabBarLabelStyle: styles.tabLabel,
