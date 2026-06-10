@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, LayoutGrid, MessageSquare, Bell, User, Plus } from 'lucide-react-native';
 
 import { ShortcutsDialog, type ShortcutItem } from '../../../components/ui';
+import { SearchDialog } from '../../../components/ui/SearchDialog';
 import { useKeyboardShortcuts, type Binding } from '../../../lib/useKeyboardShortcuts';
 import {
   useNotificationsRealtime,
@@ -49,10 +50,13 @@ export default function TabsLayout() {
   useNotificationsRealtime(userId);
 
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const bindings: Binding[] = useMemo(
     () => [
       { combo: 'c',     description: 'Nueva tarea',           handler: () => router.push('/tasks/new' as never) },
+      { combo: 'cmd+k', description: 'Búsqueda global',       handler: () => setShowSearch(true), evenInInput: true },
+      { combo: '/',     description: 'Búsqueda global',       handler: () => setShowSearch(true) },
       { combo: 'g+i',   description: 'Ir a Inicio',           handler: () => router.push('/' as never) },
       { combo: 'g+t',   description: 'Ir a Tableros',         handler: () => router.push('/boards' as never) },
       { combo: 'g+c',   description: 'Ir a Chats',            handler: () => router.push('/chat' as never) },
@@ -60,7 +64,7 @@ export default function TabsLayout() {
       { combo: 'g+p',   description: 'Ir a Perfil',           handler: () => router.push('/profile' as never) },
       { combo: 'shift+?', description: 'Mostrar atajos',      handler: () => setShowShortcuts(true) },
       { combo: '?',     description: 'Mostrar atajos',        handler: () => setShowShortcuts(true) },
-      { combo: 'escape', description: 'Cerrar diálogos',      handler: () => setShowShortcuts(false), evenInInput: true },
+      { combo: 'escape', description: 'Cerrar diálogos',      handler: () => { setShowShortcuts(false); setShowSearch(false); }, evenInInput: true },
     ],
     [router],
   );
@@ -77,6 +81,10 @@ export default function TabsLayout() {
       visible={showShortcuts}
       onClose={() => setShowShortcuts(false)}
       shortcuts={shortcuts}
+    />
+    <SearchDialog
+      visible={showSearch}
+      onClose={() => setShowSearch(false)}
     />
     <Tabs
       screenOptions={{
