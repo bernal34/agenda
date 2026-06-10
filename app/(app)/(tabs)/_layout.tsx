@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Home, LayoutGrid, MessageSquare, Bell, User } from 'lucide-react-native';
+import { Home, LayoutGrid, MessageSquare, Bell, User, Plus } from 'lucide-react-native';
 
 import { ShortcutsDialog, type ShortcutItem } from '../../../components/ui';
 import { useKeyboardShortcuts, type Binding } from '../../../lib/useKeyboardShortcuts';
@@ -141,11 +141,43 @@ export default function TabsLayout() {
       <Tabs.Screen name="boards/[areaId]" options={{ href: null }} />
       <Tabs.Screen name="chat/[channelId]" options={{ href: null }} />
     </Tabs>
+
+    <Pressable
+      onPress={() => router.push('/tasks/new' as never)}
+      style={({ pressed }) => [
+        styles.fab,
+        {
+          bottom: 58 + Math.max(insets.bottom, 8) + 6 + 16,
+        },
+        pressed && styles.fabPressed,
+      ]}
+      hitSlop={6}
+      accessibilityLabel="Nueva tarea"
+    >
+      <Plus size={22} color={tokens.brand.fg} strokeWidth={2.6} />
+    </Pressable>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  fab: {
+    position: 'absolute',
+    right: 18,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: tokens.brand[600],
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
+  },
+  fabPressed: { backgroundColor: tokens.brand[700] },
+
   tabBar: {
     backgroundColor: tokens.bg.surface,
     borderTopColor: tokens.border.subtle,
