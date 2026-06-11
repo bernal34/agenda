@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Animated, {
   runOnJS,
   SharedValue,
@@ -41,6 +41,14 @@ export function DraggableTaskCard({ task, onPress, onDragStart, onDragMove, onDr
       opacity.value = withTiming(1, { duration: 120 });
     });
 
+  const tap = Gesture.Tap()
+    .maxDuration(220)
+    .onEnd((_e, success) => {
+      if (success) runOnJS(onPress)();
+    });
+
+  const composed = Gesture.Exclusive(tap, pan);
+
   function measureAndStart() {
     wrapRef.current?.measureInWindow((x, y, w, h) => {
       onDragStart(task, { x, y, w, h });
@@ -52,11 +60,9 @@ export function DraggableTaskCard({ task, onPress, onDragStart, onDragMove, onDr
   }));
 
   return (
-    <GestureDetector gesture={pan}>
+    <GestureDetector gesture={composed}>
       <Animated.View ref={wrapRef} style={animatedStyle}>
-        <Pressable onPress={onPress}>
-          <TaskCard task={task} compact />
-        </Pressable>
+        <TaskCard task={task} compact />
       </Animated.View>
     </GestureDetector>
   );
