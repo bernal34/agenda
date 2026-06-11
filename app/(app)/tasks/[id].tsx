@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar as CalendarIcon, Trash2 } from 'lucide-react-native';
+import { Archive, ArchiveRestore, Calendar as CalendarIcon, Trash2 } from 'lucide-react-native';
 
 import { TaskAssignees } from '../../../components/tasks/TaskAssignees';
 import { TaskAttachments } from '../../../components/tasks/TaskAttachments';
@@ -36,6 +36,7 @@ import { dmyToIso, isoToDmy, isValidDmy } from '../../../lib/dateFormat';
 import { notify } from '../../../lib/notify';
 import { useBoardStages } from '../../../lib/queries/stages';
 import {
+  useArchiveTask,
   useDeleteTask,
   useTask,
   useUpdateTask,
@@ -59,6 +60,7 @@ export default function EditTaskScreen() {
   const { data: task, isLoading } = useTask(id);
   const updateMut = useUpdateTask();
   const deleteMut = useDeleteTask();
+  const archiveMut = useArchiveTask();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -120,6 +122,17 @@ export default function EditTaskScreen() {
       close();
     } catch (err) {
       notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  const handleArchiveToggle = async () => {
+    if (!task) return;
+    const archive = !task.archived_at;
+    try {
+      await archiveMut.mutateAsync({ id: task.id, archive });
+      if (archive) close();
+    } catch (err) {
+      notify('No se pudo archivar', err instanceof Error ? err.message : 'Error');
     }
   };
 
@@ -270,12 +283,23 @@ export default function EditTaskScreen() {
           <TaskComments taskId={task.id} areaId={task.area_id} userId={userId} />
 
           <Button
+            variant="secondary"
+            icon={task.archived_at ? ArchiveRestore : Archive}
+            onPress={handleArchiveToggle}
+            loading={archiveMut.isPending}
+            fullWidth
+            style={{ marginTop: spacing[5] }}
+          >
+            {task.archived_at ? 'Restaurar tarea' : 'Archivar tarea'}
+          </Button>
+
+          <Button
             variant="ghost"
             icon={Trash2}
             onPress={handleDelete}
             loading={deleteMut.isPending}
             fullWidth
-            style={{ marginTop: spacing[5] }}
+            style={{ marginTop: spacing[2] }}
           >
             Eliminar tarea
           </Button>

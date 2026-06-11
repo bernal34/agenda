@@ -16,6 +16,7 @@ export function useMyTasks(userId: string | undefined) {
           'id, title, description, status, priority, progress, due_date, area:areas(id, name, color, slug), task_labels(label), assignees:task_assignees!inner(user_id)',
         )
         .eq('assignees.user_id', userId!)
+        .is('archived_at', null)
         .order('due_date', { ascending: true, nullsFirst: false });
 
       if (error) throw error;
@@ -35,6 +36,7 @@ export function useAreaTasks(areaId: string | undefined) {
           'id, title, description, status, priority, progress, due_date, area:areas(id, name, color, slug), task_labels(label)',
         )
         .eq('area_id', areaId!)
+        .is('archived_at', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data ?? []).map(mapTask);

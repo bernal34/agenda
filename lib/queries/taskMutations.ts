@@ -21,6 +21,7 @@ export interface TaskRecord {
   priority: TaskPriority;
   progress: number;
   due_date: string | null;
+  archived_at: string | null;
 }
 
 export function useTask(taskId: string | undefined) {
@@ -30,7 +31,7 @@ export function useTask(taskId: string | undefined) {
     queryFn: async (): Promise<TaskRecord> => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, area_id, title, description, status, priority, progress, due_date')
+        .select('id, area_id, title, description, status, priority, progress, due_date, archived_at')
         .eq('id', taskId!)
         .single();
       if (error) throw error;
@@ -81,6 +82,25 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: async ({ id, ...changes }: Partial<TaskInput> & { id: string }) => {
       const { error } = await supabase.from('tasks').update(changes).eq('id', id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: (id) => {
+      qc.invalidateQueries({ queryKey: ['task', id] });
+      qc.invalidateQueries({ queryKey: ['area-tasks'] });
+      qc.invalidateQueries({ queryKey: ['my-tasks'] });
+    },
+  });
+}
+
+export function useArchiveTask() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, archive }: { id: string; archive: boolean }) => {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ archived_at: archive ? new Date().toISOString() : null })
+        .eq('id', id);
       if (error) throw error;
       return id;
     },
