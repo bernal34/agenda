@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import Animated, { useSharedValue } from 'react-native-reanimated';
 import { GestureDetector } from 'react-native-gesture-handler';
-import { GripVertical, Plus, Trash2, X } from 'lucide-react-native';
+import { GripVertical, Plus, Trash2, Users, X } from 'lucide-react-native';
 
 import { useColumnDrag } from '../../../../components/board/DraggableColumn';
 import { DragPreview, DraggableTaskCard } from '../../../../components/tasks/DraggableTaskCard';
@@ -193,6 +193,18 @@ export default function KanbanBoard() {
         title={area?.name ?? 'Tablero'}
         accent={area?.color}
         fallbackRoute="/boards"
+        right={
+          area && !area.personal ? (
+            <Pressable
+              onPress={() => router.push(`/area-members/${areaId}` as never)}
+              hitSlop={6}
+              style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
+            >
+              <Users size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+              <Text style={styles.membersBtnText}>Miembros</Text>
+            </Pressable>
+          ) : null
+        }
       />
 
       {tasksQ.isLoading && (
@@ -575,4 +587,22 @@ const styles = StyleSheet.create({
   colorDotSelected: { borderColor: tokens.text.primary },
 
   error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[5] },
+
+  membersBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    backgroundColor: palette.brand[50],
+    borderWidth: 1,
+    borderColor: palette.brand[200],
+  },
+  membersBtnPressed: { backgroundColor: palette.brand[100] },
+  membersBtnText: {
+    color: tokens.brand[600],
+    fontSize: typography.size.xs,
+    fontWeight: typography.weight.semibold as '600',
+  },
 });
