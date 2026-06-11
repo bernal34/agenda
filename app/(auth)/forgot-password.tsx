@@ -66,7 +66,7 @@ export default function ForgotPasswordScreen() {
             <View style={styles.logoMark}>
               <KeyRound size={22} color={tokens.brand.fg} strokeWidth={2.4} />
             </View>
-            <Text style={styles.brandName}>OpsBoard</Text>
+            <Text style={styles.brandName}>Mi Agenda</Text>
             <Text style={styles.brandTagline}>Recuperar acceso</Text>
           </View>
 

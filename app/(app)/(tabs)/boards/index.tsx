@@ -194,7 +194,7 @@ export default function BoardsIndex() {
 
             {!personal && (
               <Text style={styles.hint}>
-                Los tableros compartidos requieren permisos de admin de OpsBoard.
+                Los tableros compartidos requieren permisos de admin.
               </Text>
             )}
 
