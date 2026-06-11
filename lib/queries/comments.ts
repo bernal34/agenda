@@ -51,10 +51,21 @@ export function useCommentAuthors(authorIds: string[]) {
 export function useCreateComment(taskId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ body, parentId }: { body: string; parentId?: string | null }) => {
+    mutationFn: async ({
+      body,
+      parentId,
+      mentions,
+    }: {
+      body: string;
+      parentId?: string | null;
+      mentions?: string[];
+    }) => {
       if (!taskId) throw new Error('Missing task');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Sin sesión');
+      const uniqueMentions = Array.from(
+        new Set((mentions ?? []).filter((id) => id && id !== user.id)),
+      );
       const { data, error } = await supabase
         .from('task_comments')
         .insert({
@@ -62,6 +73,7 @@ export function useCreateComment(taskId: string | undefined) {
           author_id: user.id,
           body: body.trim(),
           parent_id: parentId ?? null,
+          mentions: uniqueMentions,
         })
         .select('id, task_id, author_id, body, parent_id, created_at')
         .single();

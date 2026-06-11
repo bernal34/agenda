@@ -1,10 +1,12 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  NativeSyntheticEvent,
   Pressable,
   StyleSheet,
   Text,
   TextInput,
+  TextInputSelectionChangeEventData,
   View,
 } from 'react-native';
 import { Send, X } from 'lucide-react-native';
@@ -12,6 +14,7 @@ import { Send, X } from 'lucide-react-native';
 import { Avatar, SectionHeader } from '../ui';
 import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
 import { notify } from '../../lib/notify';
+import { useAreaMembers, AreaMember } from '../../lib/queries/assignees';
 import {
   CommentAuthor,
   TaskComment,
@@ -20,6 +23,33 @@ import {
   useDeleteComment,
   useTaskComments,
 } from '../../lib/queries/comments';
+
+// El token que se inserta en el body al elegir un miembro.
+// Usamos el primer nombre (sin espacios). Si dos miembros del área
+// tienen el mismo primer nombre, agregamos el inicial del apellido.
+function mentionToken(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^\w.-]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+}
+
+function firstWord(s: string): string {
+  return s.trim().split(/\s+/)[0] ?? s;
+}
+
+function displayHandle(member: AreaMember, all: AreaMember[]): string {
+  const name = member.full_name?.trim() || 'usuario';
+  const first = firstWord(name);
+  const others = all.filter(
+    (m) => m.id !== member.id && firstWord(m.full_name?.trim() || '') === first,
+  );
+  if (others.length === 0) return mentionToken(first);
+  const rest = name.slice(first.length).trim();
+  const initial = rest ? rest[0] : '';
+  return mentionToken(`${first}${initial}`);
+}
 
 function formatStamp(iso: string) {
   const d = new Date(iso);
@@ -32,8 +62,12 @@ function formatStamp(iso: string) {
   return d.toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+// Mismo regex (con acentos) que se usa al guardar para resolver los handles
+// en IDs de miembros y al render para resaltar.
+const MENTION_TOKEN = /@[A-Za-zÀ-ÿ0-9._-]+/g;
+
 function renderBody(body: string) {
-  const parts = body.split(/(@[\w.-]+)/g);
+  const parts = body.split(/(@[A-Za-zÀ-ÿ0-9._-]+)/g);
   return parts.map((p, i) =>
     p.startsWith('@') ? (
       <Text key={i} style={styles.mention}>
@@ -45,10 +79,17 @@ function renderBody(body: string) {
   );
 }
 
-export function TaskComments({ taskId, userId }: { taskId: string; userId: string | undefined }) {
+interface Props {
+  taskId: string;
+  areaId: string | undefined;
+  userId: string | undefined;
+}
+
+export function TaskComments({ taskId, areaId, userId }: Props) {
   const { data: comments, isLoading, error } = useTaskComments(taskId);
   const authorIds = (comments ?? []).map((c) => c.author_id);
   const { data: authors } = useCommentAuthors(authorIds);
+  const { data: members } = useAreaMembers(areaId);
   const createMut = useCreateComment(taskId);
   const deleteMut = useDeleteComment(taskId);
 
@@ -58,14 +99,74 @@ export function TaskComments({ taskId, userId }: { taskId: string; userId: strin
     return m;
   }, [authors]);
 
+  // Mapa handle -> id para resolver menciones al enviar.
+  const handleMap = useMemo(() => {
+    const m = new Map<string, string>();
+    const all = members ?? [];
+    all.forEach((mem) => {
+      const handle = displayHandle(mem, all).toLowerCase();
+      if (handle) m.set(handle, mem.id);
+    });
+    return m;
+  }, [members]);
+
   const [draft, setDraft] = useState('');
+  const [selection, setSelection] = useState<{ start: number; end: number }>({ start: 0, end: 0 });
+  const inputRef = useRef<TextInput>(null);
+
+  // Detecta el token @parcial inmediatamente a la izquierda del caret.
+  const trigger = useMemo(() => {
+    if (selection.start !== selection.end) return null;
+    const upto = draft.slice(0, selection.start);
+    const m = upto.match(/(?:^|\s)@([A-Za-zÀ-ÿ0-9._-]*)$/);
+    if (!m) return null;
+    return { query: m[1] ?? '', start: selection.start - (m[1]?.length ?? 0) - 1 };
+  }, [draft, selection]);
+
+  const suggestions = useMemo(() => {
+    if (!trigger || !members) return [];
+    const q = trigger.query.toLowerCase();
+    const pool = members.filter((m) => m.id !== userId);
+    if (!q) return pool.slice(0, 5);
+    return pool
+      .filter((m) => (m.full_name ?? '').toLowerCase().includes(q))
+      .slice(0, 5);
+  }, [trigger, members, userId]);
+
+  const insertMention = useCallback(
+    (member: AreaMember) => {
+      if (!trigger || !members) return;
+      const handle = displayHandle(member, members);
+      const before = draft.slice(0, trigger.start);
+      const after = draft.slice(selection.start);
+      const insert = `@${handle} `;
+      const next = before + insert + after;
+      setDraft(next);
+      const caret = (before + insert).length;
+      // Sync selection state inmediatamente para no reabrir el popup.
+      setSelection({ start: caret, end: caret });
+      requestAnimationFrame(() => inputRef.current?.setSelection?.(caret, caret));
+    },
+    [draft, members, selection.start, trigger],
+  );
+
+  const handleSelectionChange = useCallback(
+    (e: NativeSyntheticEvent<TextInputSelectionChangeEventData>) => {
+      setSelection(e.nativeEvent.selection);
+    },
+    [],
+  );
 
   const handleSend = async () => {
     const t = draft.trim();
     if (t.length < 1) return;
+    // Resolver los handles presentes en el body a IDs de miembros.
+    const matched = Array.from(new Set(t.match(MENTION_TOKEN) ?? []))
+      .map((tok) => handleMap.get(tok.slice(1).toLowerCase()))
+      .filter((id): id is string => !!id && id !== userId);
     setDraft('');
     try {
-      await createMut.mutateAsync({ body: t });
+      await createMut.mutateAsync({ body: t, mentions: matched });
     } catch (err) {
       setDraft(t);
       notify('No se pudo enviar', err instanceof Error ? err.message : 'Error');
@@ -105,10 +206,32 @@ export function TaskComments({ taskId, userId }: { taskId: string; userId: strin
       })}
 
       <View style={styles.composer}>
+        {suggestions.length > 0 && (
+          <View style={styles.suggestions}>
+            {suggestions.map((m) => (
+              <Pressable
+                key={m.id}
+                onPress={() => insertMention(m)}
+                style={({ pressed }) => [styles.suggestion, pressed && styles.suggestionPressed]}
+              >
+                <Avatar name={m.full_name ?? 'Miembro'} uri={m.avatar_url} size="xs" />
+                <Text style={styles.suggestionName} numberOfLines={1}>
+                  {m.full_name?.trim() || 'Miembro'}
+                </Text>
+                <Text style={styles.suggestionHandle} numberOfLines={1}>
+                  @{members ? displayHandle(m, members) : ''}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
         <TextInput
+          ref={inputRef}
           style={styles.input}
           value={draft}
           onChangeText={setDraft}
+          onSelectionChange={handleSelectionChange}
+          selection={selection}
           placeholder="Escribí un comentario... usá @ para mencionar"
           placeholderTextColor={tokens.text.muted}
           multiline
@@ -206,6 +329,31 @@ const styles = StyleSheet.create({
   },
 
   composer: { marginTop: spacing[3], gap: spacing[2] },
+  suggestions: {
+    borderWidth: 1,
+    borderColor: tokens.border.subtle,
+    borderRadius: radius.md,
+    backgroundColor: tokens.bg.surface,
+    overflow: 'hidden',
+  },
+  suggestion: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[2],
+    paddingHorizontal: spacing[3],
+    paddingVertical: 8,
+  },
+  suggestionPressed: { backgroundColor: palette.brand[50] },
+  suggestionName: {
+    flex: 1,
+    color: tokens.text.primary,
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.medium as '500',
+  },
+  suggestionHandle: {
+    color: tokens.text.muted,
+    fontSize: typography.size.xs,
+  },
   input: {
     minHeight: 60,
     maxHeight: 120,

@@ -267,7 +267,7 @@ export default function EditTaskScreen() {
           <TaskLabels taskId={task.id} areaId={task.area_id} />
           <TaskSubtasks taskId={task.id} />
           <TaskAttachments taskId={task.id} />
-          <TaskComments taskId={task.id} userId={userId} />
+          <TaskComments taskId={task.id} areaId={task.area_id} userId={userId} />
 
           <Button
             variant="ghost"
