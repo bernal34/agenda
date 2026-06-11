@@ -21,12 +21,12 @@ export default function Root({ children }: PropsWithChildren) {
         {/* PWA */}
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#534AB7" />
-        <meta name="application-name" content="OpsBoard" />
+        <meta name="application-name" content="Mi Agenda" />
 
         {/* iOS / Safari add-to-home-screen */}
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="apple-mobile-web-app-title" content="OpsBoard" />
+        <meta name="apple-mobile-web-app-title" content="Mi Agenda" />
         <link rel="apple-touch-icon" href="/icon.png" />
 
         {/* Favicon */}
