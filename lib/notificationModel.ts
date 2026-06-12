@@ -3,6 +3,7 @@
 export type NotificationKind =
   | 'task_assigned'
   | 'task_due'
+  | 'task_start_soon'
   | 'mention'
   | 'comment';
 

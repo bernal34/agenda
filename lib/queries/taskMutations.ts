@@ -17,6 +17,7 @@ export interface TaskInput {
   priority?: TaskPriority;
   due_date?: string | null;
   start_at?: string | null;
+  lead_time_minutes?: number;
   progress?: number;
   recurrence_rule?: RecurrenceRule | null;
 }
@@ -31,6 +32,7 @@ export interface TaskRecord {
   progress: number;
   due_date: string | null;
   start_at: string | null;
+  lead_time_minutes: number;
   archived_at: string | null;
   recurrence_rule: RecurrenceRule | null;
 }
@@ -42,7 +44,7 @@ export function useTask(taskId: string | undefined) {
     queryFn: async (): Promise<TaskRecord> => {
       const { data, error } = await supabase
         .from('tasks')
-        .select('id, area_id, title, description, status, priority, progress, due_date, start_at, archived_at, recurrence_rule')
+        .select('id, area_id, title, description, status, priority, progress, due_date, start_at, lead_time_minutes, archived_at, recurrence_rule')
         .eq('id', taskId!)
         .single();
       if (error) throw error;
@@ -67,6 +69,7 @@ export function useCreateTask() {
           priority: payload.priority ?? 'normal',
           due_date: payload.due_date ?? null,
           start_at: payload.start_at ?? null,
+          lead_time_minutes: payload.lead_time_minutes ?? 5,
           progress: payload.progress ?? 0,
           created_by: user?.id ?? null,
         })

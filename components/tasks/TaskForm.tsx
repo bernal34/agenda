@@ -47,8 +47,17 @@ export interface TaskFormValues {
   priority: TaskPriority;
   due_date: string;
   start_at: string | null;
+  lead_time_minutes: number;
   progress: number;
 }
+
+const LEAD_TIME_OPTIONS: { value: number; label: string }[] = [
+  { value: 0,  label: 'En el momento' },
+  { value: 5,  label: '5 min antes' },
+  { value: 15, label: '15 min antes' },
+  { value: 30, label: '30 min antes' },
+  { value: 60, label: '1 h antes' },
+];
 
 interface Props {
   initial?: Partial<TaskFormValues>;
@@ -101,6 +110,7 @@ export function TaskForm({
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? 'normal');
   const [dueDate, setDueDate] = useState(initialDt.dueDate);
   const [startTime, setStartTime] = useState(initialDt.startTime);
+  const [leadTime, setLeadTime] = useState<number>(initial?.lead_time_minutes ?? 5);
   const [progress, setProgress] = useState<number>(initial?.progress ?? 0);
 
   useEffect(() => {
@@ -114,6 +124,7 @@ export function TaskForm({
       setDueDate(next.dueDate);
       setStartTime(next.startTime);
     }
+    if (initial.lead_time_minutes !== undefined) setLeadTime(initial.lead_time_minutes);
     if (initial.progress !== undefined) setProgress(initial.progress);
   }, [initial]);
 
@@ -146,6 +157,7 @@ export function TaskForm({
       priority,
       due_date: dmyToIso(dueDate) ?? '',
       start_at: startAtIso,
+      lead_time_minutes: leadTime,
       progress,
     });
   };
@@ -247,6 +259,42 @@ export function TaskForm({
         <DueDateField value={dueDate} onChange={setDueDate} />
 
         <StartTimeField value={startTime} onChange={setStartTime} />
+
+        {startTime !== '' && (
+          <View style={styles.section}>
+            <SectionHeader title="Avisarme" />
+            <View style={styles.optionsRow}>
+              {LEAD_TIME_OPTIONS.map((opt) => {
+                const active = leadTime === opt.value;
+                return (
+                  <Pressable
+                    key={opt.value}
+                    onPress={() => setLeadTime(opt.value)}
+                    style={[
+                      styles.option,
+                      active && {
+                        backgroundColor: palette.brand[500] + '14',
+                        borderColor: palette.brand[500],
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.optionText,
+                        active && {
+                          color: palette.brand[600],
+                          fontWeight: typography.weight.semibold as '600',
+                        },
+                      ]}
+                    >
+                      {opt.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
 
         {showProgress && (

@@ -32,24 +32,27 @@ import { useAuthStore } from '../../../stores/authStore';
 import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
 
 const KIND_ICON: Record<NotificationKind, LucideIcon> = {
-  task_assigned: ListChecks,
-  task_due:      Clock,
-  mention:       AtSign,
-  comment:       MessageSquare,
+  task_assigned:    ListChecks,
+  task_due:         Clock,
+  task_start_soon:  Clock,
+  mention:          AtSign,
+  comment:          MessageSquare,
 };
 
 const KIND_COLOR: Record<NotificationKind, string> = {
-  task_assigned: palette.brand[600],
-  task_due:      palette.amber[600],
-  mention:       palette.sky[600],
-  comment:       palette.slate[600],
+  task_assigned:    palette.brand[600],
+  task_due:         palette.amber[600],
+  task_start_soon:  palette.emerald[600],
+  mention:          palette.sky[600],
+  comment:          palette.slate[600],
 };
 
 const KIND_TITLE: Record<NotificationKind, string> = {
-  task_assigned: 'Nueva tarea asignada',
-  task_due:      'Tarea próxima a vencer',
-  mention:       'Te mencionaron',
-  comment:       'Nuevo comentario',
+  task_assigned:    'Nueva tarea asignada',
+  task_due:         'Tarea próxima a vencer',
+  task_start_soon:  'Tarea próxima a comenzar',
+  mention:          'Te mencionaron',
+  comment:          'Nuevo comentario',
 };
 
 function relTime(iso: string) {

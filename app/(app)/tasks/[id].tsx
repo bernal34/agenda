@@ -90,6 +90,7 @@ export default function EditTaskScreen() {
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [dueDate, setDueDate] = useState('');
   const [startTime, setStartTime] = useState('');
+  const [leadTime, setLeadTime] = useState(5);
   const [progress, setProgress] = useState(0);
   const [recFreq, setRecFreq] = useState<RecurrenceFreq | 'none'>('none');
   const [recInterval, setRecInterval] = useState('1');
@@ -111,6 +112,7 @@ export default function EditTaskScreen() {
       setDueDate(isoToDmy(task.due_date));
       setStartTime('');
     }
+    setLeadTime(task.lead_time_minutes ?? 5);
     setProgress(task.progress);
     setRecFreq(task.recurrence_rule?.freq ?? 'none');
     setRecInterval(String(task.recurrence_rule?.interval ?? 1));
@@ -147,6 +149,7 @@ export default function EditTaskScreen() {
         priority,
         due_date: dmyToIso(dueDate),
         start_at: dmyAndTimeToIso(dueDate, startTime),
+        lead_time_minutes: leadTime,
         progress,
         recurrence_rule: rule,
       });
@@ -327,6 +330,48 @@ export default function EditTaskScreen() {
             autoCorrect={false}
             keyboardType="numbers-and-punctuation"
           />
+
+          {startTime !== '' && (
+            <View style={styles.section}>
+              <SectionHeader title="Avisarme" />
+              <View style={styles.optionsRow}>
+                {[
+                  { value: 0,  label: 'En el momento' },
+                  { value: 5,  label: '5 min antes' },
+                  { value: 15, label: '15 min antes' },
+                  { value: 30, label: '30 min antes' },
+                  { value: 60, label: '1 h antes' },
+                ].map((opt) => {
+                  const active = leadTime === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => { setLeadTime(opt.value); bump(); }}
+                      style={[
+                        styles.option,
+                        active && {
+                          backgroundColor: palette.brand[500] + '14',
+                          borderColor: palette.brand[500],
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          active && {
+                            color: palette.brand[600],
+                            fontWeight: typography.weight.semibold as '600',
+                          },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           <View style={styles.section}>
             <SectionHeader title="Recurrencia" />
