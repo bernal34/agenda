@@ -1,8 +1,9 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Calendar, AlertCircle } from 'lucide-react-native';
+import { Calendar, Clock, AlertCircle } from 'lucide-react-native';
 
 import { Badge } from '../ui/Badge';
 import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { isoToLocalTime } from '../../lib/dateFormat';
 import { colorForLabel } from '../../lib/labelColor';
 import { MyTask, TaskPriority, TaskStatus } from '../../lib/queries/tasks';
 
@@ -49,6 +50,7 @@ interface Props {
 export function TaskCard({ task, onPress, compact = false }: Props) {
   const due = formatDate(task.due_date);
   const overdue = isOverdue(task.due_date, task.status);
+  const startTime = isoToLocalTime(task.start_at);
   const statusColor = STATUS_COLOR[task.status];
   const isDone = task.status === 'done';
 
@@ -102,18 +104,26 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
       )}
 
       <View style={styles.footer}>
-        {due && (
-          <View style={styles.dueWrap}>
-            {overdue ? (
-              <AlertCircle size={12} color={palette.red[600]} strokeWidth={2.2} />
-            ) : (
-              <Calendar size={12} color={tokens.text.muted} strokeWidth={2} />
-            )}
-            <Text style={[styles.dueText, overdue && { color: palette.red[600], fontWeight: '600' }]}>
-              {due}
-            </Text>
-          </View>
-        )}
+        <View style={styles.footerLeft}>
+          {due && (
+            <View style={styles.dueWrap}>
+              {overdue ? (
+                <AlertCircle size={12} color={palette.red[600]} strokeWidth={2.2} />
+              ) : (
+                <Calendar size={12} color={tokens.text.muted} strokeWidth={2} />
+              )}
+              <Text style={[styles.dueText, overdue && { color: palette.red[600], fontWeight: '600' }]}>
+                {due}
+              </Text>
+            </View>
+          )}
+          {startTime && (
+            <View style={styles.dueWrap}>
+              <Clock size={12} color={tokens.text.muted} strokeWidth={2} />
+              <Text style={styles.dueText}>{startTime}</Text>
+            </View>
+          )}
+        </View>
         <Text style={styles.statusText}>{STATUS_LABEL[task.status]}</Text>
       </View>
 
@@ -194,6 +204,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginTop: spacing[2],
   },
+  footerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   dueWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   dueText: {
     fontSize: typography.size.xs,

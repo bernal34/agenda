@@ -14,6 +14,7 @@ export interface MyTask {
   priority: TaskPriority;
   progress: number;
   due_date: string | null;
+  start_at: string | null;
   area: { id: string; name: string; color: string; slug: string } | null;
   labels: string[];
   snoozed_until: string | null;
@@ -30,6 +31,7 @@ export function mapTask(t: any): MyTask {
     priority: t.priority,
     progress: t.progress,
     due_date: t.due_date,
+    start_at: t.start_at ?? null,
     area: t.area,
     labels: ((t.task_labels ?? []) as { label: string }[])
       .map((l) => l.label)

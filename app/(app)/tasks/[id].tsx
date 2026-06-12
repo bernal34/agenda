@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Archive, ArchiveRestore, BellOff, Calendar as CalendarIcon, Trash2 } from 'lucide-react-native';
+import { Archive, ArchiveRestore, BellOff, Calendar as CalendarIcon, Clock as ClockIcon, Trash2 } from 'lucide-react-native';
 
 import { TaskAssignees } from '../../../components/tasks/TaskAssignees';
 import { TaskAttachments } from '../../../components/tasks/TaskAttachments';
@@ -35,7 +35,15 @@ import {
   tokens,
   typography,
 } from '../../../constants/theme';
-import { dmyToIso, isoToDmy, isValidDmy } from '../../../lib/dateFormat';
+import {
+  dmyAndTimeToIso,
+  dmyToIso,
+  isoToDmy,
+  isoToLocalDmy,
+  isoToLocalTime,
+  isValidDmy,
+  isValidTime,
+} from '../../../lib/dateFormat';
 import { notify } from '../../../lib/notify';
 import { useBoardStages } from '../../../lib/queries/stages';
 import {
@@ -81,6 +89,8 @@ export default function EditTaskScreen() {
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [dueDate, setDueDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [leadTime, setLeadTime] = useState(5);
   const [progress, setProgress] = useState(0);
   const [recFreq, setRecFreq] = useState<RecurrenceFreq | 'none'>('none');
   const [recInterval, setRecInterval] = useState('1');
@@ -94,7 +104,15 @@ export default function EditTaskScreen() {
     setDescription(task.description ?? '');
     setStatus(task.status);
     setPriority(task.priority);
-    setDueDate(isoToDmy(task.due_date));
+    // Si la tarea tiene start_at preferimos esa fuente (incluye hora).
+    if (task.start_at) {
+      setDueDate(isoToLocalDmy(task.start_at));
+      setStartTime(isoToLocalTime(task.start_at));
+    } else {
+      setDueDate(isoToDmy(task.due_date));
+      setStartTime('');
+    }
+    setLeadTime(task.lead_time_minutes ?? 5);
     setProgress(task.progress);
     setRecFreq(task.recurrence_rule?.freq ?? 'none');
     setRecInterval(String(task.recurrence_rule?.interval ?? 1));
@@ -111,6 +129,14 @@ export default function EditTaskScreen() {
       notify('Fecha inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
       return;
     }
+    if (startTime && !isValidTime(startTime)) {
+      notify('Hora inválida', 'Usá HH:MM en formato 24h (ej: 09:30)');
+      return;
+    }
+    if (startTime && !dueDate) {
+      notify('Falta la fecha', 'Para programar una hora primero captura la fecha');
+      return;
+    }
     const parsedInterval = Math.max(1, parseInt(recInterval || '1', 10) || 1);
     const rule: RecurrenceRule | null =
       recFreq === 'none' ? null : { freq: recFreq, interval: parsedInterval };
@@ -122,6 +148,8 @@ export default function EditTaskScreen() {
         status,
         priority,
         due_date: dmyToIso(dueDate),
+        start_at: dmyAndTimeToIso(dueDate, startTime),
+        lead_time_minutes: leadTime,
         progress,
         recurrence_rule: rule,
       });
@@ -291,6 +319,59 @@ export default function EditTaskScreen() {
             autoCapitalize="none"
             autoCorrect={false}
           />
+
+          <Input
+            label="Hora de inicio (opcional)"
+            icon={ClockIcon}
+            value={startTime}
+            onChangeText={(v) => { setStartTime(v); bump(); }}
+            placeholder="HH:MM"
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="numbers-and-punctuation"
+          />
+
+          {startTime !== '' && (
+            <View style={styles.section}>
+              <SectionHeader title="Avisarme" />
+              <View style={styles.optionsRow}>
+                {[
+                  { value: 0,  label: 'En el momento' },
+                  { value: 5,  label: '5 min antes' },
+                  { value: 15, label: '15 min antes' },
+                  { value: 30, label: '30 min antes' },
+                  { value: 60, label: '1 h antes' },
+                ].map((opt) => {
+                  const active = leadTime === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => { setLeadTime(opt.value); bump(); }}
+                      style={[
+                        styles.option,
+                        active && {
+                          backgroundColor: palette.brand[500] + '14',
+                          borderColor: palette.brand[500],
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          active && {
+                            color: palette.brand[600],
+                            fontWeight: typography.weight.semibold as '600',
+                          },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
 
           <View style={styles.section}>
             <SectionHeader title="Recurrencia" />
