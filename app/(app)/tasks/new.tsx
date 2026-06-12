@@ -90,6 +90,7 @@ export default function NewTaskScreen() {
               status: values.status,
               priority: values.priority,
               due_date: values.due_date || null,
+              start_at: values.start_at,
               assignTo: userId,
             });
             close();

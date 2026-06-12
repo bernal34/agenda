@@ -9,11 +9,19 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { Calendar as CalendarIcon, Trash2 } from 'lucide-react-native';
+import { Calendar as CalendarIcon, Clock as ClockIcon, Trash2 } from 'lucide-react-native';
 
 import { Button, Input, ScreenHeader, SectionHeader } from '../ui';
 import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
-import { dmyToIso, isoToDmy, isValidDmy } from '../../lib/dateFormat';
+import {
+  dmyAndTimeToIso,
+  dmyToIso,
+  isoToDmy,
+  isoToLocalDmy,
+  isoToLocalTime,
+  isValidDmy,
+  isValidTime,
+} from '../../lib/dateFormat';
 import { notify } from '../../lib/notify';
 import { BoardStage } from '../../lib/queries/stages';
 import { TaskPriority, TaskStatus } from '../../lib/queries/tasks';
@@ -38,6 +46,7 @@ export interface TaskFormValues {
   status: TaskStatus;
   priority: TaskPriority;
   due_date: string;
+  start_at: string | null;
   progress: number;
 }
 
@@ -53,6 +62,26 @@ interface Props {
   onCancel: () => void;
 }
 
+// El form tiene dos fuentes posibles de fecha en `initial`:
+// - `start_at` (timestamp completo): nueva en Fase 1, lo preferimos.
+// - `due_date` (date legacy): se mantiene como fallback.
+// Si llega `start_at`, parseamos fecha+hora de ahí; si no, usamos due_date sin hora.
+function initialDateTime(initial: Partial<TaskFormValues> | undefined): {
+  dueDate: string;
+  startTime: string;
+} {
+  if (initial?.start_at) {
+    return {
+      dueDate: isoToLocalDmy(initial.start_at),
+      startTime: isoToLocalTime(initial.start_at),
+    };
+  }
+  return {
+    dueDate: isoToDmy(initial?.due_date ?? ''),
+    startTime: '',
+  };
+}
+
 export function TaskForm({
   initial,
   mode,
@@ -65,11 +94,13 @@ export function TaskForm({
   onCancel,
 }: Props) {
   const stageOptions = stages && stages.length > 0 ? stages : DEFAULT_STAGES;
+  const initialDt = initialDateTime(initial);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
   const [status, setStatus] = useState<TaskStatus>(initial?.status ?? 'todo');
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? 'normal');
-  const [dueDate, setDueDate] = useState(isoToDmy(initial?.due_date ?? ''));
+  const [dueDate, setDueDate] = useState(initialDt.dueDate);
+  const [startTime, setStartTime] = useState(initialDt.startTime);
   const [progress, setProgress] = useState<number>(initial?.progress ?? 0);
 
   useEffect(() => {
@@ -78,7 +109,11 @@ export function TaskForm({
     if (initial.description !== undefined) setDescription(initial.description);
     if (initial.status !== undefined) setStatus(initial.status);
     if (initial.priority !== undefined) setPriority(initial.priority);
-    if (initial.due_date !== undefined) setDueDate(isoToDmy(initial.due_date));
+    if (initial.start_at !== undefined || initial.due_date !== undefined) {
+      const next = initialDateTime(initial);
+      setDueDate(next.dueDate);
+      setStartTime(next.startTime);
+    }
     if (initial.progress !== undefined) setProgress(initial.progress);
   }, [initial]);
 
@@ -91,16 +126,26 @@ export function TaskForm({
       notify('Fecha inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
       return;
     }
+    if (startTime && !isValidTime(startTime)) {
+      notify('Hora inválida', 'Usá HH:MM en formato 24h (ej: 09:30)');
+      return;
+    }
+    if (startTime && !dueDate) {
+      notify('Falta la fecha', 'Para programar una hora primero captura la fecha');
+      return;
+    }
     if (progress < 0 || progress > 100) {
       notify('Progreso inválido', 'El progreso debe estar entre 0 y 100');
       return;
     }
+    const startAtIso = dmyAndTimeToIso(dueDate, startTime);
     await onSubmit({
       title: title.trim(),
       description: description.trim(),
       status,
       priority,
       due_date: dmyToIso(dueDate) ?? '',
+      start_at: startAtIso,
       progress,
     });
   };
@@ -200,6 +245,8 @@ export function TaskForm({
         </View>
 
         <DueDateField value={dueDate} onChange={setDueDate} />
+
+        <StartTimeField value={startTime} onChange={setStartTime} />
 
 
         {showProgress && (
@@ -308,6 +355,63 @@ function DueDateField({
       placeholder="DD/MM/YYYY"
       autoCapitalize="none"
       autoCorrect={false}
+    />
+  );
+}
+
+/**
+ * Time picker: native HTML time input on web, plain text HH:MM on native.
+ * Cuando se llena, el form combina (date + time) → start_at timestamp
+ * para tareas estilo agenda. Sin hora, la tarea solo tiene fecha.
+ */
+function StartTimeField({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  if (Platform.OS === 'web') {
+    return (
+      <View style={{ gap: spacing[1] }}>
+        <Text style={styles.label}>Hora de inicio (opcional)</Text>
+        {(() => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const InputEl: any = 'input';
+          return (
+            <InputEl
+              type="time"
+              value={value}
+              onChange={(e: { target: { value: string } }) => onChange(e.target.value)}
+              style={{
+                height: 40,
+                paddingLeft: 12,
+                paddingRight: 12,
+                borderRadius: 8,
+                border: '1px solid #cbd5e1',
+                fontSize: 16,
+                color: '#0f172a',
+                backgroundColor: '#ffffff',
+                outline: 'none',
+                fontFamily: 'inherit',
+              }}
+            />
+          );
+        })()}
+      </View>
+    );
+  }
+
+  return (
+    <Input
+      label="Hora de inicio (opcional)"
+      icon={ClockIcon}
+      value={value}
+      onChangeText={onChange}
+      placeholder="HH:MM"
+      autoCapitalize="none"
+      autoCorrect={false}
+      keyboardType="numbers-and-punctuation"
     />
   );
 }
