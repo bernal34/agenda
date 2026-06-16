@@ -13,6 +13,7 @@ export interface MyTask {
   status: TaskStatus;
   priority: TaskPriority;
   progress: number;
+  start_date: string | null;
   due_date: string | null;
   start_at: string | null;
   area: { id: string; name: string; color: string; slug: string } | null;
@@ -30,6 +31,7 @@ export function mapTask(t: any): MyTask {
     status: t.status,
     priority: t.priority,
     progress: t.progress,
+    start_date: t.start_date ?? null,
     due_date: t.due_date,
     start_at: t.start_at ?? null,
     area: t.area,

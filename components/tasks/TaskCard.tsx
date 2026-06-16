@@ -48,7 +48,14 @@ interface Props {
 }
 
 export function TaskCard({ task, onPress, compact = false }: Props) {
+  const start = formatDate(task.start_date);
   const due = formatDate(task.due_date);
+  // Mostrar rango "10 jun – 15 jun" si las dos fechas existen y son distintas.
+  // Si son iguales (o solo hay una), mostrar la que haya como antes.
+  const dateLabel =
+    start && due && task.start_date !== task.due_date
+      ? `${start} – ${due}`
+      : due ?? start ?? null;
   const overdue = isOverdue(task.due_date, task.status);
   const startTime = isoToLocalTime(task.start_at);
   const statusColor = STATUS_COLOR[task.status];
@@ -105,7 +112,7 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
 
       <View style={styles.footer}>
         <View style={styles.footerLeft}>
-          {due && (
+          {dateLabel && (
             <View style={styles.dueWrap}>
               {overdue ? (
                 <AlertCircle size={12} color={palette.red[600]} strokeWidth={2.2} />
@@ -113,7 +120,7 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
                 <Calendar size={12} color={tokens.text.muted} strokeWidth={2} />
               )}
               <Text style={[styles.dueText, overdue && { color: palette.red[600], fontWeight: '600' }]}>
-                {due}
+                {dateLabel}
               </Text>
             </View>
           )}

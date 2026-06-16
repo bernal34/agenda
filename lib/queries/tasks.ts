@@ -13,7 +13,7 @@ export function useMyTasks(userId: string | undefined) {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          'id, title, description, status, priority, progress, due_date, start_at, area:areas(id, name, color, slug), task_labels(label), assignees:task_assignees!inner(user_id, snoozed_until)',
+          'id, title, description, status, priority, progress, start_date, due_date, start_at, area:areas(id, name, color, slug), task_labels(label), assignees:task_assignees!inner(user_id, snoozed_until)',
         )
         .eq('assignees.user_id', userId!)
         .is('archived_at', null)
@@ -36,7 +36,7 @@ export function useAreaTasks(areaId: string | undefined) {
       const { data, error } = await supabase
         .from('tasks')
         .select(
-          'id, title, description, status, priority, progress, due_date, start_at, area:areas(id, name, color, slug), task_labels(label)',
+          'id, title, description, status, priority, progress, start_date, due_date, start_at, area:areas(id, name, color, slug), task_labels(label)',
         )
         .eq('area_id', areaId!)
         .is('archived_at', null)

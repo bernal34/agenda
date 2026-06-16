@@ -45,6 +45,7 @@ export interface TaskFormValues {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  start_date: string;
   due_date: string;
   start_at: string | null;
   lead_time_minutes: number;
@@ -71,23 +72,22 @@ interface Props {
   onCancel: () => void;
 }
 
-// El form tiene dos fuentes posibles de fecha en `initial`:
-// - `start_at` (timestamp completo): nueva en Fase 1, lo preferimos.
-// - `due_date` (date legacy): se mantiene como fallback.
-// Si llega `start_at`, parseamos fecha+hora de ahí; si no, usamos due_date sin hora.
+// Tres campos de fecha/hora en `initial`:
+// - `start_date` (date): fecha de inicio del rango.
+// - `due_date` (date): fecha final del rango (legacy: era la única, ahora es "fin").
+// - `start_at` (timestamp): si hay hora, viene combinada con start_date.
+// La hora se deriva preferentemente de start_at; la fecha de inicio del campo
+// start_date (no del start_at) para evitar ambigüedad cuando el user limpia
+// la hora pero deja la fecha.
 function initialDateTime(initial: Partial<TaskFormValues> | undefined): {
+  startDate: string;
   dueDate: string;
   startTime: string;
 } {
-  if (initial?.start_at) {
-    return {
-      dueDate: isoToLocalDmy(initial.start_at),
-      startTime: isoToLocalTime(initial.start_at),
-    };
-  }
   return {
+    startDate: isoToDmy(initial?.start_date ?? ''),
     dueDate: isoToDmy(initial?.due_date ?? ''),
-    startTime: '',
+    startTime: initial?.start_at ? isoToLocalTime(initial.start_at) : '',
   };
 }
 
@@ -108,6 +108,7 @@ export function TaskForm({
   const [description, setDescription] = useState(initial?.description ?? '');
   const [status, setStatus] = useState<TaskStatus>(initial?.status ?? 'todo');
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? 'normal');
+  const [startDate, setStartDate] = useState(initialDt.startDate);
   const [dueDate, setDueDate] = useState(initialDt.dueDate);
   const [startTime, setStartTime] = useState(initialDt.startTime);
   const [leadTime, setLeadTime] = useState<number>(initial?.lead_time_minutes ?? 5);
@@ -119,8 +120,13 @@ export function TaskForm({
     if (initial.description !== undefined) setDescription(initial.description);
     if (initial.status !== undefined) setStatus(initial.status);
     if (initial.priority !== undefined) setPriority(initial.priority);
-    if (initial.start_at !== undefined || initial.due_date !== undefined) {
+    if (
+      initial.start_date !== undefined ||
+      initial.due_date !== undefined ||
+      initial.start_at !== undefined
+    ) {
       const next = initialDateTime(initial);
+      setStartDate(next.startDate);
       setDueDate(next.dueDate);
       setStartTime(next.startTime);
     }
@@ -133,28 +139,42 @@ export function TaskForm({
       notify('Título inválido', 'El título debe tener al menos 2 caracteres');
       return;
     }
-    if (dueDate && !isValidDmy(dueDate)) {
-      notify('Fecha inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
+    if (startDate && !isValidDmy(startDate)) {
+      notify('Fecha de inicio inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
       return;
+    }
+    if (dueDate && !isValidDmy(dueDate)) {
+      notify('Fecha final inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
+      return;
+    }
+    if (startDate && dueDate) {
+      const a = dmyToIso(startDate);
+      const b = dmyToIso(dueDate);
+      if (a && b && a > b) {
+        notify('Rango inválido', 'La fecha de inicio no puede ser posterior a la final');
+        return;
+      }
     }
     if (startTime && !isValidTime(startTime)) {
       notify('Hora inválida', 'Usá HH:MM en formato 24h (ej: 09:30)');
       return;
     }
-    if (startTime && !dueDate) {
-      notify('Falta la fecha', 'Para programar una hora primero captura la fecha');
+    if (startTime && !startDate) {
+      notify('Falta la fecha', 'Para programar una hora primero captura la fecha de inicio');
       return;
     }
     if (progress < 0 || progress > 100) {
       notify('Progreso inválido', 'El progreso debe estar entre 0 y 100');
       return;
     }
-    const startAtIso = dmyAndTimeToIso(dueDate, startTime);
+    // start_at = start_date + start_time (la hora se ancla al inicio, no al fin).
+    const startAtIso = dmyAndTimeToIso(startDate, startTime);
     await onSubmit({
       title: title.trim(),
       description: description.trim(),
       status,
       priority,
+      start_date: dmyToIso(startDate) ?? '',
       due_date: dmyToIso(dueDate) ?? '',
       start_at: startAtIso,
       lead_time_minutes: leadTime,
@@ -256,7 +276,9 @@ export function TaskForm({
           </View>
         </View>
 
-        <DueDateField value={dueDate} onChange={setDueDate} />
+        <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
+
+        <DateField label="Fecha final" value={dueDate} onChange={setDueDate} />
 
         <StartTimeField value={startTime} onChange={setStartTime} />
 
@@ -349,12 +371,14 @@ export function TaskForm({
 
 /**
  * Date picker: native HTML date input on web (opens browser calendar),
- * plain text input on native (DD/MM/YYYY format). Same DueDateField API.
+ * plain text input on native (DD/MM/YYYY format).
  */
-function DueDateField({
+function DateField({
+  label,
   value,
   onChange,
 }: {
+  label: string;
   value: string;
   onChange: (next: string) => void;
 }) {
@@ -362,7 +386,7 @@ function DueDateField({
     const isoValue = dmyToIso(value) ?? '';
     return (
       <View style={{ gap: spacing[1] }}>
-        <Text style={styles.label}>Fecha límite</Text>
+        <Text style={styles.label}>{label}</Text>
         {/* react-native-web renders raw React elements as DOM */}
         {(() => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -396,7 +420,7 @@ function DueDateField({
 
   return (
     <Input
-      label="Fecha límite"
+      label={label}
       icon={CalendarIcon}
       value={value}
       onChangeText={onChange}
