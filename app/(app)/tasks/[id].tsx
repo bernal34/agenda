@@ -88,6 +88,7 @@ export default function EditTaskScreen() {
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState<TaskStatus>('todo');
   const [priority, setPriority] = useState<TaskPriority>('normal');
+  const [startDate, setStartDate] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [leadTime, setLeadTime] = useState(5);
@@ -104,14 +105,9 @@ export default function EditTaskScreen() {
     setDescription(task.description ?? '');
     setStatus(task.status);
     setPriority(task.priority);
-    // Si la tarea tiene start_at preferimos esa fuente (incluye hora).
-    if (task.start_at) {
-      setDueDate(isoToLocalDmy(task.start_at));
-      setStartTime(isoToLocalTime(task.start_at));
-    } else {
-      setDueDate(isoToDmy(task.due_date));
-      setStartTime('');
-    }
+    setStartDate(isoToDmy(task.start_date));
+    setDueDate(isoToDmy(task.due_date));
+    setStartTime(task.start_at ? isoToLocalTime(task.start_at) : '');
     setLeadTime(task.lead_time_minutes ?? 5);
     setProgress(task.progress);
     setRecFreq(task.recurrence_rule?.freq ?? 'none');
@@ -125,16 +121,28 @@ export default function EditTaskScreen() {
       notify('Título inválido', 'Mínimo 2 caracteres');
       return;
     }
-    if (dueDate && !isValidDmy(dueDate)) {
-      notify('Fecha inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
+    if (startDate && !isValidDmy(startDate)) {
+      notify('Fecha de inicio inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
       return;
+    }
+    if (dueDate && !isValidDmy(dueDate)) {
+      notify('Fecha final inválida', 'Usá DD/MM/YYYY (ej: 31/12/2026)');
+      return;
+    }
+    if (startDate && dueDate) {
+      const a = dmyToIso(startDate);
+      const b = dmyToIso(dueDate);
+      if (a && b && a > b) {
+        notify('Rango inválido', 'La fecha de inicio no puede ser posterior a la final');
+        return;
+      }
     }
     if (startTime && !isValidTime(startTime)) {
       notify('Hora inválida', 'Usá HH:MM en formato 24h (ej: 09:30)');
       return;
     }
-    if (startTime && !dueDate) {
-      notify('Falta la fecha', 'Para programar una hora primero captura la fecha');
+    if (startTime && !startDate) {
+      notify('Falta la fecha', 'Para programar una hora primero captura la fecha de inicio');
       return;
     }
     const parsedInterval = Math.max(1, parseInt(recInterval || '1', 10) || 1);
@@ -147,8 +155,9 @@ export default function EditTaskScreen() {
         description: description.trim() || null,
         status,
         priority,
+        start_date: dmyToIso(startDate),
         due_date: dmyToIso(dueDate),
-        start_at: dmyAndTimeToIso(dueDate, startTime),
+        start_at: dmyAndTimeToIso(startDate, startTime),
         lead_time_minutes: leadTime,
         progress,
         recurrence_rule: rule,
@@ -311,7 +320,17 @@ export default function EditTaskScreen() {
           </View>
 
           <Input
-            label="Fecha límite"
+            label="Fecha de inicio"
+            icon={CalendarIcon}
+            value={startDate}
+            onChangeText={(v) => { setStartDate(v); bump(); }}
+            placeholder="DD/MM/YYYY"
+            autoCapitalize="none"
+            autoCorrect={false}
+          />
+
+          <Input
+            label="Fecha final"
             icon={CalendarIcon}
             value={dueDate}
             onChangeText={(v) => { setDueDate(v); bump(); }}

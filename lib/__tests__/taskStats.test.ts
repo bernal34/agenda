@@ -16,6 +16,7 @@ function task(partial: Partial<MyTask>): MyTask {
     status: 'todo',
     priority: 'normal',
     progress: 0,
+    start_date: null,
     due_date: null,
     start_at: null,
     area: null,
