@@ -8,6 +8,7 @@ import { TaskForm } from '../../../components/tasks/TaskForm';
 import { Card, EmptyState, ScreenHeader } from '../../../components/ui';
 import { notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
+import { useAreaMembers } from '../../../lib/queries/assignees';
 import { useBoardStages } from '../../../lib/queries/stages';
 import { useCreateTask } from '../../../lib/queries/taskMutations';
 import { TaskStatus } from '../../../lib/queries/tasks';
@@ -26,6 +27,7 @@ export default function NewTaskScreen() {
   const { data: areas } = useMyAreas(userId);
   const [selectedArea, setSelectedArea] = useState<string | undefined>(area);
   const stagesQ = useBoardStages(selectedArea);
+  const membersQ = useAreaMembers(selectedArea);
 
   const close = () => {
     if (router.canGoBack()) router.back();
@@ -76,8 +78,11 @@ export default function NewTaskScreen() {
         initial={{
           status: (status as TaskStatus) ?? 'todo',
           due_date: date ?? '',
+          assigneeIds: userId ? [userId] : [],
         }}
         stages={stagesQ.data}
+        members={membersQ.data}
+        currentUserId={userId}
         showStatus
         showProgress={false}
         onCancel={close}
@@ -93,7 +98,7 @@ export default function NewTaskScreen() {
               due_date: values.due_date || null,
               start_at: values.start_at,
               lead_time_minutes: values.lead_time_minutes,
-              assignTo: userId,
+              assigneeIds: values.assigneeIds,
             });
             close();
           } catch (err) {

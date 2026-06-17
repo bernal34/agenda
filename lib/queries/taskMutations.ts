@@ -58,8 +58,8 @@ export function useTask(taskId: string | undefined) {
 export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (input: TaskInput & { assignTo?: string }) => {
-      const { assignTo, ...payload } = input;
+    mutationFn: async (input: TaskInput & { assigneeIds?: string[] }) => {
+      const { assigneeIds, ...payload } = input;
       const { data: { user } } = await supabase.auth.getUser();
       const { data: task, error } = await supabase
         .from('tasks')
@@ -80,10 +80,11 @@ export function useCreateTask() {
         .single();
       if (error) throw error;
 
-      if (assignTo) {
+      const ids = Array.from(new Set((assigneeIds ?? []).filter(Boolean)));
+      if (ids.length > 0) {
         const { error: aErr } = await supabase
           .from('task_assignees')
-          .insert({ task_id: task.id, user_id: assignTo });
+          .insert(ids.map((user_id) => ({ task_id: task.id, user_id })));
         if (aErr) throw aErr;
       }
       return task.id as string;
@@ -91,6 +92,7 @@ export function useCreateTask() {
     onSuccess: (_id, vars) => {
       qc.invalidateQueries({ queryKey: ['area-tasks', vars.area_id] });
       qc.invalidateQueries({ queryKey: ['my-tasks'] });
+      qc.invalidateQueries({ queryKey: ['delegated-tasks'] });
     },
   });
 }

@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Inbox, UserCheck } from 'lucide-react-native';
+import { AlertTriangle, Inbox, UserCheck } from 'lucide-react-native';
 
 import { Avatar, Badge, EmptyState, ScreenHeader } from '../../components/ui';
 import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
@@ -46,10 +46,45 @@ export default function DelegatedScreen() {
   const userId = useAuthStore((s) => s.user?.id);
   const { data: tasks = [], isLoading } = useDelegatedTasks(userId);
 
+  const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
+  const [areaFilter, setAreaFilter] = useState<string | null>(null);
+  const [overdueOnly, setOverdueOnly] = useState(false);
+
+  // Pools de filtros derivados del dataset actual (no extra queries).
+  const assigneePool = useMemo(() => {
+    const map = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }>();
+    tasks.forEach((t) => t.assignedTo.forEach((u) => map.set(u.id, u)));
+    return Array.from(map.values()).sort((a, b) =>
+      (a.full_name ?? '').localeCompare(b.full_name ?? ''),
+    );
+  }, [tasks]);
+
+  const areaPool = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; color: string }>();
+    tasks.forEach((t) => {
+      if (t.area) map.set(t.area.id, { id: t.area.id, name: t.area.name, color: t.area.color });
+    });
+    return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
+  }, [tasks]);
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  const filtered = useMemo(() => {
+    return tasks.filter((t) => {
+      if (assigneeFilter && !t.assignedTo.some((u) => u.id === assigneeFilter)) return false;
+      if (areaFilter && t.area?.id !== areaFilter) return false;
+      if (overdueOnly) {
+        if (t.status === 'done') return false;
+        if (!t.due_date || t.due_date >= today) return false;
+      }
+      return true;
+    });
+  }, [tasks, assigneeFilter, areaFilter, overdueOnly, today]);
+
   const groups = useMemo(() => {
     const byStatus = new Map<TaskStatus, DelegatedTask[]>();
     STATUS_ORDER.forEach((s) => byStatus.set(s, []));
-    tasks.forEach((t) => {
+    filtered.forEach((t) => {
       const arr = byStatus.get(t.status) ?? [];
       arr.push(t);
       byStatus.set(t.status, arr);
@@ -57,7 +92,14 @@ export default function DelegatedScreen() {
     return STATUS_ORDER.map((s) => ({ status: s, items: byStatus.get(s) ?? [] })).filter(
       (g) => g.items.length > 0,
     );
-  }, [tasks]);
+  }, [filtered]);
+
+  const anyFilterActive = !!assigneeFilter || !!areaFilter || overdueOnly;
+  const clearFilters = () => {
+    setAssigneeFilter(null);
+    setAreaFilter(null);
+    setOverdueOnly(false);
+  };
 
   const close = () => {
     if (router.canGoBack()) router.back();
@@ -68,7 +110,11 @@ export default function DelegatedScreen() {
     <SafeAreaView style={styles.safe} edges={['top']}>
       <ScreenHeader
         title="Tareas delegadas"
-        subtitle={`${tasks.length} ${tasks.length === 1 ? 'tarea' : 'tareas'} con seguimiento`}
+        subtitle={
+          anyFilterActive
+            ? `${filtered.length} de ${tasks.length} (filtrado)`
+            : `${tasks.length} ${tasks.length === 1 ? 'tarea' : 'tareas'} con seguimiento`
+        }
         backLabel="Atrás"
         onBack={close}
       />
@@ -85,6 +131,72 @@ export default function DelegatedScreen() {
         />
       ) : (
         <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+          {(assigneePool.length > 1 || areaPool.length > 1 || tasks.length > 0) && (
+            <View style={styles.filters}>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
+                <Pressable
+                  onPress={() => setOverdueOnly((v) => !v)}
+                  style={[styles.filterChip, overdueOnly && styles.filterChipActiveDanger]}
+                >
+                  <AlertTriangle
+                    size={12}
+                    color={overdueOnly ? palette.red[600] : tokens.text.muted}
+                    strokeWidth={2.2}
+                  />
+                  <Text style={[styles.filterChipText, overdueOnly && { color: palette.red[600] }]}>
+                    Vencidas
+                  </Text>
+                </Pressable>
+                {areaPool.length > 1 &&
+                  areaPool.map((a) => {
+                    const active = areaFilter === a.id;
+                    return (
+                      <Pressable
+                        key={a.id}
+                        onPress={() => setAreaFilter(active ? null : a.id)}
+                        style={[
+                          styles.filterChip,
+                          active && { backgroundColor: a.color + '14', borderColor: a.color },
+                        ]}
+                      >
+                        <View style={[styles.areaDot, { backgroundColor: a.color }]} />
+                        <Text style={[styles.filterChipText, active && { color: a.color }]}>
+                          {a.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                {assigneePool.map((u) => {
+                  const active = assigneeFilter === u.id;
+                  const name = u.full_name?.trim() || 'Miembro';
+                  return (
+                    <Pressable
+                      key={u.id}
+                      onPress={() => setAssigneeFilter(active ? null : u.id)}
+                      style={[styles.filterChip, active && styles.filterChipActive]}
+                    >
+                      <Avatar name={name} uri={u.avatar_url} size="xs" />
+                      <Text style={[styles.filterChipText, active && { color: tokens.brand[600] }]}>
+                        {name}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+                {anyFilterActive && (
+                  <Pressable onPress={clearFilters} style={styles.clearChip}>
+                    <Text style={styles.clearChipText}>Limpiar</Text>
+                  </Pressable>
+                )}
+              </ScrollView>
+            </View>
+          )}
+          {groups.length === 0 && (
+            <EmptyState
+              icon={Inbox}
+              title="Nada coincide con el filtro"
+              description="Probá quitar algún filtro o limpiar todo."
+            />
+          )}
           {groups.map((g) => (
             <View key={g.status} style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -182,6 +294,51 @@ function DelegatedRow({
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: tokens.bg.app },
   body: { padding: spacing[5], paddingBottom: spacing[10], gap: spacing[5] },
+
+  filters: { marginHorizontal: -spacing[5] },
+  filterRow: {
+    paddingHorizontal: spacing[5],
+    flexDirection: 'row',
+    gap: spacing[2],
+    alignItems: 'center',
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 8,
+    paddingRight: 12,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: tokens.border.default,
+    backgroundColor: tokens.bg.surface,
+  },
+  filterChipActive: {
+    backgroundColor: palette.brand[500] + '14',
+    borderColor: palette.brand[500],
+  },
+  filterChipActiveDanger: {
+    backgroundColor: palette.red[500] + '14',
+    borderColor: palette.red[500],
+  },
+  filterChipText: {
+    fontSize: typography.size.xs,
+    color: tokens.text.secondary,
+    fontWeight: typography.weight.medium as '500',
+  },
+  areaDot: { width: 8, height: 8, borderRadius: 4 },
+  clearChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.full,
+  },
+  clearChipText: {
+    fontSize: typography.size.xs,
+    color: tokens.text.muted,
+    fontWeight: typography.weight.semibold as '600',
+    textDecorationLine: 'underline',
+  },
 
   section: { gap: spacing[2] },
   sectionHeader: {
