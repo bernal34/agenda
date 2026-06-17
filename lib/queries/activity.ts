@@ -32,8 +32,11 @@ export interface ActivityEntry {
 const PAGE_SIZE = 50;
 
 /**
- * Actividad reciente en todas las áreas del usuario.
- * RLS ya filtra por membresía, así que pedimos los últimos N y listo.
+ * Actividad personal del usuario: solo eventos que él mismo disparó.
+ * Antes mostraba la actividad de todas sus áreas; cambió a personal por
+ * privacidad (el ruido de ver lo que hacen los demás no agregaba valor).
+ * Si más adelante se quiere ver actividad ajena con permisos, se puede
+ * agregar un toggle gateado por rol en área o super_admin.
  */
 export function useRecentActivity(userId: string | undefined) {
   return useQuery({
@@ -45,6 +48,7 @@ export function useRecentActivity(userId: string | undefined) {
         .select(
           'id, task_id, user_id, action, payload, created_at, task:tasks(id, title, area:areas(id, name, color))',
         )
+        .eq('user_id', userId!)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
       if (error) throw error;

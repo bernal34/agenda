@@ -20,6 +20,7 @@ import {
   Activity as ActivityIcon,
   ChevronRight,
   LogOut,
+  UserCheck,
 } from 'lucide-react-native';
 
 import { signOut } from '../../../lib/auth';
@@ -202,8 +203,23 @@ export default function HomeScreen() {
             <ActivityIcon size={16} color={palette.brand[600]} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.activityTitle}>Actividad reciente</Text>
-            <Text style={styles.activitySubtitle}>Qué pasó en tus áreas</Text>
+            <Text style={styles.activityTitle}>Mi actividad</Text>
+            <Text style={styles.activitySubtitle}>Tu historial personal</Text>
+          </View>
+          <ChevronRight size={16} color={tokens.text.muted} strokeWidth={2} />
+        </Pressable>
+
+        {/* Delegated tasks link */}
+        <Pressable
+          onPress={() => router.push('/delegated' as never)}
+          style={({ pressed }) => [styles.activityLink, pressed && styles.activityLinkPressed]}
+        >
+          <View style={styles.activityIcon}>
+            <UserCheck size={16} color={palette.brand[600]} strokeWidth={2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.activityTitle}>Tareas delegadas</Text>
+            <Text style={styles.activitySubtitle}>Cómo van las que asignaste a otros</Text>
           </View>
           <ChevronRight size={16} color={tokens.text.muted} strokeWidth={2} />
         </Pressable>

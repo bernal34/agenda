@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import { Calendar as CalendarIcon, Clock as ClockIcon, Trash2 } from 'lucide-react-native';
 
-import { Button, Input, ScreenHeader, SectionHeader } from '../ui';
+import { Avatar, Button, Input, ScreenHeader, SectionHeader } from '../ui';
 import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { AreaMember } from '../../lib/queries/assignees';
 import {
   dmyAndTimeToIso,
   dmyToIso,
@@ -50,6 +51,7 @@ export interface TaskFormValues {
   start_at: string | null;
   lead_time_minutes: number;
   progress: number;
+  assigneeIds: string[];
 }
 
 const LEAD_TIME_OPTIONS: { value: number; label: string }[] = [
@@ -67,6 +69,9 @@ interface Props {
   showStatus?: boolean;
   showProgress?: boolean;
   stages?: Pick<BoardStage, 'code' | 'label' | 'color'>[];
+  /** Miembros del área para el selector de asignados. Si no se pasa, la sección no se muestra. */
+  members?: AreaMember[];
+  currentUserId?: string;
   onSubmit: (values: TaskFormValues) => void | Promise<void>;
   onDelete?: () => void;
   onCancel: () => void;
@@ -98,6 +103,8 @@ export function TaskForm({
   showStatus = true,
   showProgress = false,
   stages,
+  members,
+  currentUserId,
   onSubmit,
   onDelete,
   onCancel,
@@ -113,6 +120,7 @@ export function TaskForm({
   const [startTime, setStartTime] = useState(initialDt.startTime);
   const [leadTime, setLeadTime] = useState<number>(initial?.lead_time_minutes ?? 5);
   const [progress, setProgress] = useState<number>(initial?.progress ?? 0);
+  const [assigneeIds, setAssigneeIds] = useState<string[]>(initial?.assigneeIds ?? []);
 
   useEffect(() => {
     if (!initial) return;
@@ -132,6 +140,7 @@ export function TaskForm({
     }
     if (initial.lead_time_minutes !== undefined) setLeadTime(initial.lead_time_minutes);
     if (initial.progress !== undefined) setProgress(initial.progress);
+    if (initial.assigneeIds !== undefined) setAssigneeIds(initial.assigneeIds);
   }, [initial]);
 
   const handleSubmit = async () => {
@@ -179,7 +188,12 @@ export function TaskForm({
       start_at: startAtIso,
       lead_time_minutes: leadTime,
       progress,
+      assigneeIds,
     });
+  };
+
+  const toggleAssignee = (id: string) => {
+    setAssigneeIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   return (
@@ -275,6 +289,45 @@ export function TaskForm({
             })}
           </View>
         </View>
+
+        {members && members.length > 0 && (
+          <View style={styles.section}>
+            <SectionHeader title="Asignar a" count={assigneeIds.length || undefined} />
+            <View style={styles.optionsRow}>
+              {members.map((m) => {
+                const active = assigneeIds.includes(m.id);
+                const isSelf = m.id === currentUserId;
+                const name = (m.full_name?.trim() || 'Miembro') + (isSelf ? ' (vos)' : '');
+                return (
+                  <Pressable
+                    key={m.id}
+                    onPress={() => toggleAssignee(m.id)}
+                    style={[
+                      styles.assigneeChip,
+                      active && {
+                        backgroundColor: palette.brand[500] + '14',
+                        borderColor: palette.brand[500],
+                      },
+                    ]}
+                  >
+                    <Avatar name={m.full_name?.trim() || 'M'} uri={m.avatar_url} size="xs" />
+                    <Text
+                      style={[
+                        styles.optionText,
+                        active && {
+                          color: palette.brand[600],
+                          fontWeight: typography.weight.semibold as '600',
+                        },
+                      ]}
+                    >
+                      {name}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         <DateField label="Fecha de inicio" value={startDate} onChange={setStartDate} />
 
@@ -530,6 +583,18 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.medium as '500',
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
+  assigneeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingLeft: 4,
+    paddingRight: spacing[3],
+    paddingVertical: 4,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: tokens.border.default,
+    backgroundColor: tokens.bg.surface,
+  },
 
   progressRow: { flexDirection: 'row', gap: spacing[2] },
   progBtn: {
