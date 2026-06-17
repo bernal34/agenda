@@ -13,7 +13,7 @@ import {
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { Avatar, Badge, EmptyState, ScreenHeader } from '../../components/ui';
+import { Badge, EmptyState, ScreenHeader } from '../../components/ui';
 import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
 import {
   ActivityAction,
@@ -55,28 +55,29 @@ function relTime(iso: string) {
   return `hace ${w} sem`;
 }
 
-function describe(entry: ActivityEntry): { actor: string; verb: string; emphasis?: string } {
-  const actor = entry.actor?.full_name?.trim() || 'Alguien';
+// La query ya filtra por user_id = auth.uid(), así que todo lo que llega acá
+// lo hizo el propio usuario → segunda persona, sin actor.
+function describe(entry: ActivityEntry): { verb: string; emphasis?: string } {
   const taskTitle = entry.task?.title;
   const p = entry.payload as any;
 
   switch (entry.action) {
     case 'task.created':
-      return { actor, verb: 'creó la tarea', emphasis: taskTitle ?? p.title };
+      return { verb: 'Creaste la tarea', emphasis: taskTitle ?? p.title };
     case 'task.completed':
-      return { actor, verb: 'completó', emphasis: taskTitle ?? p.title };
+      return { verb: 'Completaste', emphasis: taskTitle ?? p.title };
     case 'task.status_changed':
-      return { actor, verb: `movió a ${p.to}`, emphasis: taskTitle ?? p.title };
+      return { verb: `Moviste a ${p.to}`, emphasis: taskTitle ?? p.title };
     case 'subtask.completed':
-      return { actor, verb: 'terminó la subtarea', emphasis: p.title };
+      return { verb: 'Terminaste la subtarea', emphasis: p.title };
     case 'comment.added':
-      return { actor, verb: 'comentó:', emphasis: p.preview ? `"${p.preview}"` : taskTitle };
+      return { verb: 'Comentaste:', emphasis: p.preview ? `"${p.preview}"` : taskTitle ?? undefined };
     case 'attachment.added':
-      return { actor, verb: 'adjuntó', emphasis: p.filename };
+      return { verb: 'Adjuntaste', emphasis: p.filename };
     case 'task.assigned':
-      return { actor, verb: 'asignó la tarea', emphasis: taskTitle };
+      return { verb: 'Asignaste la tarea', emphasis: taskTitle ?? undefined };
     default:
-      return { actor, verb: entry.action };
+      return { verb: entry.action };
   }
 }
 
@@ -87,7 +88,7 @@ export default function ActivityScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScreenHeader title="Actividad" subtitle="Lo último en tus áreas" fallbackRoute="/" />
+      <ScreenHeader title="Mi actividad" subtitle="Tu historial reciente" fallbackRoute="/" />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {isLoading && (
@@ -104,14 +105,14 @@ export default function ActivityScreen() {
           <EmptyState
             icon={ActivityIcon}
             title="Sin actividad reciente"
-            description="Cuando alguien cree, comente o complete tareas en tus áreas lo vas a ver acá."
+            description="Cuando crees, comentes o completes tareas, lo vas a ver acá."
           />
         )}
 
         {entries?.map((entry) => {
           const Icon = ACTION_ICON[entry.action] ?? CircleDot;
           const color = ACTION_COLOR[entry.action] ?? palette.slate[600];
-          const { actor, verb, emphasis } = describe(entry);
+          const { verb, emphasis } = describe(entry);
           const goToTask = entry.task_id
             ? () => router.push(`/tasks/${entry.task_id}` as never)
             : undefined;
@@ -123,25 +124,16 @@ export default function ActivityScreen() {
               disabled={!goToTask}
               style={({ pressed }) => [styles.row, pressed && goToTask && styles.rowPressed]}
             >
-              {/* Avatar */}
-              {entry.actor ? (
-                <Avatar
-                  name={entry.actor.full_name}
-                  uri={entry.actor.avatar_url}
-                  size="sm"
-                />
-              ) : (
-                <View style={styles.systemAvatar}>
-                  <ActivityIcon size={12} color={tokens.text.muted} strokeWidth={2} />
-                </View>
-              )}
+              {/* Action icon — sustituye al avatar redundante del propio user */}
+              <View style={[styles.actionBadgeLeading, { backgroundColor: color + '1A' }]}>
+                <Icon size={14} color={color} strokeWidth={2.2} />
+              </View>
 
               {/* Body */}
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.text} numberOfLines={3}>
-                  <Text style={styles.actor}>{actor}</Text>
-                  <Text style={styles.verb}> {verb} </Text>
-                  {emphasis && <Text style={styles.emphasis}>{emphasis}</Text>}
+                  <Text style={styles.verb}>{verb}</Text>
+                  {emphasis && <Text style={styles.emphasis}> {emphasis}</Text>}
                 </Text>
                 <View style={styles.meta}>
                   {entry.task?.area && (
@@ -149,11 +141,6 @@ export default function ActivityScreen() {
                   )}
                   <Text style={styles.time}>{relTime(entry.created_at)}</Text>
                 </View>
-              </View>
-
-              {/* Action icon badge */}
-              <View style={[styles.actionBadge, { backgroundColor: color + '1A' }]}>
-                <Icon size={12} color={color} strokeWidth={2.2} />
               </View>
             </Pressable>
           );
@@ -181,15 +168,12 @@ const styles = StyleSheet.create({
   },
   rowPressed: { backgroundColor: tokens.bg.subtle },
 
-  systemAvatar: {
+  actionBadgeLeading: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: tokens.bg.subtle,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: tokens.border.default,
   },
 
   text: {
@@ -197,13 +181,12 @@ const styles = StyleSheet.create({
     color: tokens.text.primary,
     lineHeight: 19,
   },
-  actor: {
+  verb: {
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
   },
-  verb: { color: tokens.text.secondary },
   emphasis: {
-    color: tokens.text.primary,
+    color: tokens.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
 
@@ -218,14 +201,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size['2xs'],
     color: tokens.text.muted,
     fontWeight: typography.weight.medium as '500',
-  },
-
-  actionBadge: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 
   error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[4] },
