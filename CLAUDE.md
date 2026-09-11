@@ -114,6 +114,12 @@ Configuración fuera del repo (una vez):
 4. `EXPO_PUBLIC_VAPID_PUBLIC_KEY` en Vercel.
 5. Nativo, además: `eas init` (agrega el `projectId`) y credenciales de APNs/FCM con `eas credentials`.
 
+Los pasos 1-4 ya están hechos en producción; falta el 5.
+
+`service_role` **no** tiene grants de tabla en `ops`/`core`: 011 solo cubre `anon`/`authenticated`. Si una edge function lee una tabla más, necesita su `grant select … to service_role` (ver 251); sin él responde `permission denied for table …`.
+
+En Windows, el CLI de Supabase: `npx.cmd` si PowerShell bloquea `npx.ps1`, y `supabase login` en una terminal propia (el `!` de Claude Code no es TTY).
+
 ## Storage
 
 - `avatars`: público.

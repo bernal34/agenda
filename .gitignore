@@ -49,3 +49,9 @@ design-system/
 
 # Deno (deno check de supabase/functions)
 deno.lock
+
+# Claude Code: permisos personales
+.claude/settings.local.json
+
+# Supabase CLI (login / link local)
+supabase/.temp/
