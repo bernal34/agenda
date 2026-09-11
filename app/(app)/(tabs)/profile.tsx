@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
-import { Camera, ChevronRight, LogOut, User, Phone, Mail, Shield } from 'lucide-react-native';
+import { Bell, Camera, ChevronRight, LogOut, User, Phone, Mail, Shield } from 'lucide-react-native';
 
 import { useIsAdmin } from '../../../lib/queries/admin';
 
@@ -27,6 +27,7 @@ import {
 import { signOut } from '../../../lib/auth';
 import { notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
+import { usePushStatus, useTogglePush, type PushStatus } from '../../../lib/queries/push';
 import {
   uploadAvatar,
   useMyProfile,
@@ -42,6 +43,15 @@ import {
   typography,
 } from '../../../constants/theme';
 
+const PUSH_COPY: Record<PushStatus, string> = {
+  enabled: 'Recibes avisos aunque la app esté cerrada.',
+  disabled: 'Actívalos para enterarte de asignaciones, menciones y recordatorios.',
+  denied: 'Bloqueaste las notificaciones. Actívalas en los ajustes del navegador o del teléfono.',
+  'needs-install':
+    'En iPhone, agrega Mi Agenda a tu pantalla de inicio (Compartir → Agregar a inicio) y ábrela desde ahí.',
+  unsupported: 'Este dispositivo o navegador no admite notificaciones push.',
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
@@ -50,6 +60,17 @@ export default function ProfileScreen() {
   const { data: areas } = useMyAreas(userId);
   const { data: isAdmin } = useIsAdmin();
   const updateMut = useUpdateProfile();
+  const { data: pushStatus } = usePushStatus(userId);
+  const pushMut = useTogglePush(userId);
+
+  const handleTogglePush = async () => {
+    try {
+      const next = await pushMut.mutateAsync(pushStatus !== 'enabled');
+      if (next === 'denied') notify('Avisos bloqueados', PUSH_COPY.denied);
+    } catch (err) {
+      notify('No se pudo cambiar', err instanceof Error ? err.message : 'Error');
+    }
+  };
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
@@ -172,7 +193,7 @@ export default function ProfileScreen() {
             icon={Phone}
             value={phone}
             onChangeText={(v) => { setPhone(v); setDirty(true); }}
-            placeholder="+54..."
+            placeholder="+52..."
             keyboardType="phone-pad"
           />
         </View>
@@ -189,6 +210,33 @@ export default function ProfileScreen() {
               <Badge customColor={a.color}>{a.role}</Badge>
             </Card>
           ))}
+        </View>
+
+        {/* Push notifications de este dispositivo */}
+        <View style={styles.section}>
+          <SectionHeader title="Notificaciones" />
+          <Card padding="md" style={styles.pushCard}>
+            <View style={styles.pushIcon}>
+              <Bell size={16} color={palette.brand[600]} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.pushTitle}>Avisos en este dispositivo</Text>
+              <Text style={styles.pushSubtitle}>
+                {pushStatus ? PUSH_COPY[pushStatus] : 'Revisando…'}
+              </Text>
+            </View>
+            {(pushStatus === 'enabled' || pushStatus === 'disabled') && (
+              <Button
+                variant={pushStatus === 'enabled' ? 'secondary' : 'primary'}
+                size="sm"
+                loading={pushMut.isPending}
+                disabled={pushMut.isPending}
+                onPress={handleTogglePush}
+              >
+                {pushStatus === 'enabled' ? 'Desactivar' : 'Activar'}
+              </Button>
+            )}
+          </Card>
         </View>
 
         {/* Admin link (solo si tenés permisos) */}
@@ -340,6 +388,31 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     color: tokens.text.muted,
     marginTop: 1,
+  },
+
+  pushCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing[3],
+  },
+  pushIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    backgroundColor: palette.brand[50],
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pushTitle: {
+    fontSize: typography.size.sm,
+    fontWeight: typography.weight.semibold as '600',
+    color: tokens.text.primary,
+  },
+  pushSubtitle: {
+    fontSize: typography.size.xs,
+    color: tokens.text.muted,
+    marginTop: 2,
+    lineHeight: 16,
   },
 
   signOutBtn: { marginTop: spacing[2] },

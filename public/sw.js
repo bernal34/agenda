@@ -44,3 +44,43 @@ self.addEventListener('fetch', (event) => {
       .catch(() => caches.match(request).then((m) => m ?? Response.error())),
   );
 });
+
+// ------------------------------------------------------------------
+// Web Push: la edge function send-push manda { title, body, url, tag }.
+// ------------------------------------------------------------------
+self.addEventListener('push', (event) => {
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch {
+    data = { body: event.data ? event.data.text() : '' };
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Mi Agenda', {
+      body: data.body || '',
+      icon: '/icon.png',
+      badge: '/favicon.png',
+      tag: data.tag,
+      renotify: !!data.tag,
+      data: { url: data.url || '/' },
+    }),
+  );
+});
+
+// Al tocar la notificación: enfocar una pestaña abierta de la app y
+// llevarla a la tarea, o abrir una nueva si no hay ninguna.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = new URL(event.notification.data?.url || '/', self.location.origin).href;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
+      const open = windows.find((w) => w.url.startsWith(self.location.origin));
+      if (open) {
+        return open.focus().then((w) => (w && 'navigate' in w ? w.navigate(target) : undefined));
+      }
+      return self.clients.openWindow(target);
+    }),
+  );
+});

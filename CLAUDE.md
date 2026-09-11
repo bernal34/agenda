@@ -19,6 +19,7 @@ Es parte del ecosistema de `portal-hub`, pero **se despliega aparte**: el Launch
 | Iconos | `lucide-react-native` |
 | Backend | Supabase "Prelar Unificada" |
 | Tests | Jest + `jest-expo` |
+| Push | `expo-notifications` (nativo) + Web Push/VAPID en `public/sw.js` (web) → edge function `send-push` |
 
 No hay NativeWind/Tailwind ni `@gorhom/bottom-sheet`: se instalaron al inicio pero nunca se cablearon ni usaron (el detalle de tarea es una ruta modal, no un sheet). Sus archivos de config ya se borraron; si `package.json` todavía los lista, falta correr `npm uninstall nativewind tailwindcss @gorhom/bottom-sheet`.
 
@@ -32,7 +33,10 @@ npm run build:web    # expo export --platform web → dist/
 npm test             # jest
 npx tsc --noEmit     # typecheck (lo mismo que corre CI)
 npm run gen:types    # tipos de ops + core → types/database.ts (requiere `npx supabase login` una vez)
+deno check --node-modules-dir=none supabase/functions/send-push/index.ts   # typecheck de la edge function
 ```
+
+`supabase/functions/` es Deno: tsconfig lo excluye y Jest solo toca sus módulos puros (p. ej. `message.ts`).
 
 CI (`.github/workflows/test.yml`) corre typecheck + tests en push a `main` y en PRs. No hay script de lint.
 
@@ -44,7 +48,10 @@ Project ID **`mgfjswovpfrzjutmbevr`** (el mismo de portal-hub). El proyecto viej
 ```
 EXPO_PUBLIC_SUPABASE_URL=https://mgfjswovpfrzjutmbevr.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=...
+EXPO_PUBLIC_VAPID_PUBLIC_KEY=...   # Web Push; también debe estar en las env vars de Vercel
 ```
+
+`.env.push.local` (gitignored) guarda los secretos del servidor de push (VAPID privada, secreto del webhook). Nunca van al cliente.
 
 `lib/supabase.ts` crea el cliente con `db: { schema: 'ops' }`, así que `supabase.from('tasks')` va a `ops.tasks`. Para `core` (perfiles, `is_super_admin`) usa `sbCore()`. Almacenamiento de sesión: `SecureStore` en nativo y `localStorage` en web. Flujo PKCE.
 
@@ -90,6 +97,29 @@ Mucho comportamiento no está en el cliente. Antes de implementar algo "en el fr
 
 Solo `ops.messages` y `ops.notifications` están en la publication `supabase_realtime` (010), y las suscripciones usan `schema: 'ops'` (`lib/queries/channels.ts`, `lib/queries/notifications.ts`). Si agregas realtime a otra tabla, necesitas **las dos cosas**: `alter publication supabase_realtime add table ops.x` **y** `schema: 'ops'` en el `.on('postgres_changes', …)`. Si falta una, la mutación funciona pero la UI no refresca (mismo gotcha documentado en portal-hub).
 
+## Push notifications
+
+Flujo: insert en `ops.notifications` → trigger `ops.tg_dispatch_push` (250) → `net.http_post` a la edge function `send-push` con `{ notification_id }` y el header `x-push-secret` → la función arma el texto (`message.ts`) y lo manda a cada dispositivo del usuario en `ops.push_subscriptions`: Web Push (VAPID) para `web` y Expo Push API para `ios`/`android`. Las suscripciones que el proveedor reporta como muertas se borran.
+
+- **Cliente**: `lib/push.ts` (nativo) y `lib/push.web.ts` (web) exportan la misma API (`getPushStatus`, `enablePush`, `disablePush`, `syncPush`, `forgetThisDevice`, `usePushNavigation`). Metro elige el archivo por plataforma, pero tsc solo ve `push.ts`, así que **cualquier cambio de firma va en los dos**. La lógica pura (estados, auto-sync, llave VAPID) vive en `lib/pushModel.ts`.
+- El usuario activa las push desde Perfil. `usePushSync` re-registra el dispositivo al abrir la app si ya había permiso, y `signOut` lo da de baja antes de cerrar la sesión.
+- En web, `enablePush` llama a `Notification.requestPermission()` antes de cualquier otro `await`, porque Safari exige que ocurra dentro del gesto del usuario. En iPhone solo funciona con la PWA instalada en la pantalla de inicio.
+- Al tocar una push: en web lo resuelve `notificationclick` en `public/sw.js`; en nativo, `usePushNavigation`.
+- Si agregas un `kind` de notificación, agrega su texto en `supabase/functions/send-push/message.ts`, junto con su test.
+
+Configuración fuera del repo (una vez):
+1. Secrets de la función: `PUSH_WEBHOOK_SECRET`, `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (valores en `.env.push.local`).
+2. Deploy: `supabase functions deploy send-push --project-ref mgfjswovpfrzjutmbevr --no-verify-jwt`. La autenticación es el `x-push-secret`, no un JWT.
+3. Secrets de Vault `ops_push_function_url` y `ops_push_webhook_secret` (ver cabecera de 250). Sin ellos, el trigger no hace nada.
+4. `EXPO_PUBLIC_VAPID_PUBLIC_KEY` en Vercel.
+5. Nativo, además: `eas init` (agrega el `projectId`) y credenciales de APNs/FCM con `eas credentials`.
+
+Los pasos 1-4 ya están hechos en producción; falta el 5.
+
+`service_role` **no** tiene grants de tabla en `ops`/`core`: 011 solo cubre `anon`/`authenticated`. Si una edge function lee una tabla más, necesita su `grant select … to service_role` (ver 251); sin él responde `permission denied for table …`.
+
+En Windows, el CLI de Supabase: `npx.cmd` si PowerShell bloquea `npx.ps1`, y `supabase login` en una terminal propia (el `!` de Claude Code no es TTY).
+
 ## Storage
 
 - `avatars`: público.
@@ -99,7 +129,7 @@ Solo `ops.messages` y `ops.notifications` están en la publication `supabase_rea
 
 `supabase/migrations/` contiene las migraciones de **todo el proyecto unificado**, no solo `ops`: también `000_core_identity`, `003_admin_user_list`, `004_esc_schema` y `005_esc_perfiles_sync`. portal-hub no tiene carpeta de migraciones; buscarlas allá es un error común.
 
-- Numeración de 10 en 10; la siguiente libre es **250**.
+- Numeración de 10 en 10; la siguiente libre es **260**.
 - Zona horaria del negocio: `America/Mexico_City`. pg_cron agenda en UTC y la sesión de la DB también es UTC, así que toda lógica de "hoy" o "medianoche" debe convertir explícitamente (ver 240). Nunca uses `date_trunc('day', now())` a secas.
 - Si agregas un `kind` de notificación, actualiza también el check `notifications_kind_check` (hoy vive en 240). Los parches de una migración usan +1 (`031`, `121`).
 - Escríbelas idempotentes (`if not exists`, `drop policy if exists`, `create or replace`), como las existentes.
@@ -128,8 +158,8 @@ components/  ui/ (Button, Card, Avatar, SearchDialog, ShortcutsDialog…) · tas
 lib/         supabase.ts · queries/ (un archivo por dominio) · lógica pura + __tests__/
 stores/      authStore.ts
 constants/   theme.ts (tokens)
-supabase/    migrations/
-public/      manifest.webmanifest, sw.js (PWA)
+supabase/    migrations/ · functions/send-push/ (Deno)
+public/      index.html (template HTML), manifest.webmanifest, sw.js (PWA + push)
 ```
 
 ## Convenciones
@@ -143,14 +173,17 @@ public/      manifest.webmanifest, sw.js (PWA)
 
 ## Despliegue
 
-- **Web**: Vercel, con `expo export --platform web` hacia `dist/` y rewrite de SPA en `vercel.json`. PWA instalable con `public/sw.js` (network-first, nunca cachea `/rest/` ni `/auth/`). Tras un deploy puede hacer falta un hard refresh (Ctrl+Shift+R).
+- **Web**: Vercel, con `expo export --platform web` hacia `dist/` y rewrite de SPA en `vercel.json`. Tras un deploy puede hacer falta un hard refresh (Ctrl+Shift+R).
+- **HTML base = `public/index.html`**. Con el output SPA (el default; `app.json` no define `web.output`), Expo usa ese archivo como template: reemplaza `%WEB_TITLE%` e inyecta los scripts antes de `</body>`. **`app/+html.tsx` no aplica en SPA** (solo con `web.output: "static"`); por eso durante meses la PWA salió sin manifest ni service worker, y el archivo se eliminó. El manifest, los meta tags de PWA/iOS, la fuente Inter y el registro de `sw.js` viven en `public/index.html`. Para comprobarlo: `npx expo export --platform web` y revisar `dist/index.html`.
+- Gotcha del template: Expo sustituye con `String.replace`, o sea **solo la primera aparición** de `%WEB_TITLE%`, `</head>` y `</body>`. Si alguno aparece en un comentario, el título queda sin reemplazar o el `<script>` del bundle termina dentro del comentario y la app no carga. No los escribas en comentarios.
+- `public/sw.js` es network-first, nunca cachea `/rest/` ni `/auth/`, y maneja `push`/`notificationclick`.
 - **Nativo**: EAS (`eas.json`, perfiles development/preview/production). Bundle id: `com.grupoprelar.opsboard`. El submit de iOS no está configurado (`ascAppId` vacío).
 
 ## Deuda conocida / no confiar en
 
-- **Push notifications no existen**: no está instalado `expo-notifications`. Los avisos (`task_start_soon`, etc.) son solo in-app vía realtime.
 - **`task_due` no tiene productor**: está en el check y en el tipo del cliente, pero ningún trigger ni cron lo genera.
 - **`'done'` hardcodeado en la DB**: `touch_completed_at` (160), el auto-archivado (240) y la recurrencia (140) comparan `status = 'done'` en lugar de usar `board_stages.is_done`. Una etapa personalizada marcada como final no archiva ni recurre.
 - `delegated.tsx` también hardcodea los 4 estados default.
+- Nombre inconsistente: la PWA instalada se llama "OpsBoard" (`manifest.webmanifest`), pero la app en tiendas y el título web dicen "Mi Agenda". En iPhone, el nombre del manifest es el que aparece en las push.
 - `design-system/opsboard/MASTER.md` (gitignored) trae una paleta roja/dorada autogenerada que **no** es la de la app. La fuente de verdad es `constants/theme.ts`.
 - `docs/architecture/` es el plan original de la unificación: histórico, con dominios de ejemplo y pendientes que ya se resolvieron.
