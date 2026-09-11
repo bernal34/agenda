@@ -1,4 +1,5 @@
 import {
+  pushSubscribeErrorMessage,
   resolveNativePushStatus,
   resolveWebPushStatus,
   shouldAutoSyncNative,
@@ -109,5 +110,30 @@ describe('urlBase64ToUint8Array', () => {
     const bytes = urlBase64ToUint8Array(key);
     expect(bytes.length).toBe(65);
     expect(bytes[0]).toBe(0x04);
+  });
+});
+
+describe('pushSubscribeErrorMessage', () => {
+  it('el fallo de Brave explica cómo activarlo', () => {
+    const err = new Error('Registration failed - push service error');
+    err.name = 'AbortError';
+    const msg = pushSubscribeErrorMessage(err);
+    expect(msg).toContain('Brave');
+    expect(msg).not.toContain('push service error');
+  });
+
+  it('permiso bloqueado manda al candado del navegador', () => {
+    const err = new Error('Permission denied');
+    err.name = 'NotAllowedError';
+    expect(pushSubscribeErrorMessage(err)).toContain('permiso');
+  });
+
+  it('un error desconocido conserva su mensaje', () => {
+    expect(pushSubscribeErrorMessage(new Error('boom'))).toBe('boom');
+  });
+
+  it('sin mensaje ni objeto cae en el texto genérico', () => {
+    expect(pushSubscribeErrorMessage(null)).toContain('No se pudo registrar');
+    expect(pushSubscribeErrorMessage(new Error(''))).toContain('No se pudo registrar');
   });
 });

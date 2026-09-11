@@ -75,6 +75,25 @@ export function urlBase64ToUint8Array(base64Url: string): Uint8Array<ArrayBuffer
   return out;
 }
 
+/**
+ * Traduce un fallo de PushManager.subscribe a algo accionable. El caso
+ * frecuente es Brave, que trae apagado su puente con el servicio de push de
+ * Google y devuelve "Registration failed - push service error"; el mismo
+ * error sale si la red bloquea ese servicio.
+ */
+export function pushSubscribeErrorMessage(err: unknown): string {
+  const name = (err as { name?: string } | null)?.name ?? '';
+  const raw = (err as { message?: string } | null)?.message ?? '';
+
+  if (name === 'NotAllowedError') {
+    return 'El navegador bloqueó el permiso de notificaciones para este sitio. Habilitalo desde el candado de la barra de direcciones y volvé a intentar.';
+  }
+  if (/push service error|AbortError/i.test(`${name} ${raw}`)) {
+    return 'Tu navegador no pudo conectarse a su servicio de notificaciones. En Brave, activá "Usar servicios de Google para mensajería push" en brave://settings/privacy y reiniciá el navegador. Si estás en la red de la oficina, puede que el firewall lo bloquee: en Chrome suele funcionar.';
+  }
+  return raw || 'No se pudo registrar este navegador para notificaciones.';
+}
+
 /** Llave válida para SecureStore (solo alfanuméricos, '.', '-' y '_') y localStorage. */
 export function optOutKey(userId: string): string {
   return `ops-push-optout.${userId}`;
