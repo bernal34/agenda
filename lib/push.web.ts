@@ -4,6 +4,7 @@
 import { supabase } from './supabase';
 import {
   optOutKey,
+  pushSubscribeErrorMessage,
   resolveWebPushStatus,
   shouldAutoSyncWeb,
   urlBase64ToUint8Array,
@@ -76,10 +77,16 @@ async function readEnv(userId: string | undefined) {
 }
 
 async function subscribe(reg: ServiceWorkerRegistration): Promise<PushSubscription> {
-  return reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-  });
+  try {
+    return await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+  } catch (err) {
+    // El navegador falla contra su propio servicio de push (Brave apagado,
+    // firewall). El texto crudo no le dice nada al usuario.
+    throw new Error(pushSubscribeErrorMessage(err));
+  }
 }
 
 async function register(sub: PushSubscription) {
