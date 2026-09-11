@@ -66,7 +66,7 @@ La pantalla `admin` se gatea con `core.is_super_admin()` (`useIsAdmin` en `lib/q
 
 ## Modelo de datos (`ops.*`)
 
-- **`areas`**: tableros. `personal = true` es el tablero propio de cada empleado; se crea automáticamente al alta en `core.profiles`, y la RPC `ensure_my_personal_board()` funciona como red de seguridad desde el cliente. Crear un tablero personal: `create_personal_area(name, color)`.
+- **`areas`**: tableros. `personal = true` es el tablero propio de cada empleado; se crea automáticamente al alta en `core.profiles`, y la RPC `ensure_my_personal_board()` funciona como red de seguridad desde el cliente. Crear un tablero personal: `create_personal_area(name, color)`. La policy `areas write` solo deja escribir `ops.areas` a un admin de ops, así que todo lo demás pasa por RPC security definer: `create_area(name, color)` (tablero de equipo, el creador queda como `owner`) y `rename_area(area, name)` (pide `can_manage_area_members`), ambas en 260, más `delete_area(area)` (270, borra en cascada tareas, etapas, canales, plantillas, reglas y miembros). Las tres piden `can_manage_area_members` salvo `create_area`, que solo pide acceso al módulo `boards`.
 - **`board_stages`**: columnas configurables por área (`code`, `label`, `color`, `sort_order`, `is_done`). **`tasks.status` es texto libre** que apunta a `board_stages.code`; los defaults son `todo | in_progress | in_review | done`. No hardcodees estados.
 - **`tasks`**: `priority` (`low|normal|high|urgent`), `progress` 0-100, `start_date` + `due_date` (rango; `due_date` es la "fecha final"), `start_at` (hora de inicio, anclada a `start_date`), `recurrence_rule` jsonb, `completed_at`, `archived_at`.
 - Subrecursos de tarea: `task_assignees` (con `snoozed_until` por asignado), `task_labels`, `task_comments` (con `mentions uuid[]`), `task_attachments`, `subtasks`, `task_dependencies`, `task_custom_values`.
@@ -129,7 +129,7 @@ En Windows, el CLI de Supabase: `npx.cmd` si PowerShell bloquea `npx.ps1`, y `su
 
 `supabase/migrations/` contiene las migraciones de **todo el proyecto unificado**, no solo `ops`: también `000_core_identity`, `003_admin_user_list`, `004_esc_schema` y `005_esc_perfiles_sync`. portal-hub no tiene carpeta de migraciones; buscarlas allá es un error común.
 
-- Numeración de 10 en 10; la siguiente libre es **260**.
+- Numeración de 10 en 10; la siguiente libre es **280**.
 - Zona horaria del negocio: `America/Mexico_City`. pg_cron agenda en UTC y la sesión de la DB también es UTC, así que toda lógica de "hoy" o "medianoche" debe convertir explícitamente (ver 240). Nunca uses `date_trunc('day', now())` a secas.
 - Si agregas un `kind` de notificación, actualiza también el check `notifications_kind_check` (hoy vive en 240). Los parches de una migración usan +1 (`031`, `121`).
 - Escríbelas idempotentes (`if not exists`, `drop policy if exists`, `create or replace`), como las existentes.

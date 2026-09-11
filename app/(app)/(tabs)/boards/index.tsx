@@ -11,9 +11,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
+  Check,
   ChevronRight,
   LayoutGrid,
   Inbox,
+  Pencil,
   Plus,
   Trash2,
   X,
@@ -28,9 +30,9 @@ import {
   useDeleteArea,
   useEnsurePersonalBoard,
   useMyAreas,
+  useRenameArea,
   MyArea,
 } from '../../../../lib/queries/areas';
-import { useMyProfile } from '../../../../lib/queries/profile';
 import { useAuthStore } from '../../../../stores/authStore';
 import { palette, radius, shadow, spacing, tokens, typography } from '../../../../constants/theme';
 
@@ -54,14 +56,17 @@ export default function BoardsIndex() {
   useEnsurePersonalBoard(userId);
 
   const { data: areas, isLoading, error } = useMyAreas(userId);
-  const { data: profile } = useMyProfile(userId);
   const createMut = useCreateArea();
   const deleteMut = useDeleteArea();
+  const renameMut = useRenameArea();
 
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState('');
   const [color, setColor] = useState(COLOR_SWATCHES[0]);
   const [personal, setPersonal] = useState(true);
+
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const resetForm = () => {
     setCreating(false);
@@ -71,21 +76,35 @@ export default function BoardsIndex() {
   };
 
   const handleCreate = async () => {
-    if (!userId || !profile?.org_id) {
-      notify('No se puede crear', 'No tenés organización asignada.');
+    if (!userId) {
+      notify('No se puede crear', 'Tu sesión expiró. Volvé a entrar.');
       return;
     }
     try {
-      await createMut.mutateAsync({
-        name,
-        color,
-        orgId: profile.org_id,
-        userId,
-        personal,
-      });
+      await createMut.mutateAsync({ name, color, userId, personal });
       resetForm();
     } catch (err) {
       notify('No se pudo crear', err instanceof Error ? err.message : 'Error');
+    }
+  };
+
+  const startRename = (a: MyArea) => {
+    setRenamingId(a.id);
+    setRenameValue(a.name);
+  };
+
+  const cancelRename = () => {
+    setRenamingId(null);
+    setRenameValue('');
+  };
+
+  const handleRename = async () => {
+    if (!renamingId) return;
+    try {
+      await renameMut.mutateAsync({ areaId: renamingId, name: renameValue });
+      cancelRename();
+    } catch (err) {
+      notify('No se pudo renombrar', err instanceof Error ? err.message : 'Error');
     }
   };
 
@@ -194,7 +213,7 @@ export default function BoardsIndex() {
 
             {!personal && (
               <Text style={styles.hint}>
-                Los tableros compartidos requieren permisos de admin.
+                Quedás como owner del tablero y podés invitar a tu equipo desde Miembros.
               </Text>
             )}
 
@@ -235,6 +254,53 @@ export default function BoardsIndex() {
         {sortedAreas.map((a) => {
           const canManage = a.role === 'owner' || a.role === 'admin';
           const isDeleting = deleteMut.isPending && deleteMut.variables === a.id;
+
+          if (renamingId === a.id) {
+            return (
+              <View key={a.id} style={styles.areaRow}>
+                <Card accent={a.color} padding="md" style={styles.areaCard}>
+                  <View style={[styles.iconBox, { backgroundColor: a.color + '1A' }]}>
+                    {a.personal ? (
+                      <User size={18} color={a.color} strokeWidth={2} />
+                    ) : (
+                      <LayoutGrid size={18} color={a.color} strokeWidth={2} />
+                    )}
+                  </View>
+                  <TextInput
+                    style={[styles.input, { flex: 1 }]}
+                    value={renameValue}
+                    onChangeText={setRenameValue}
+                    placeholder="Nombre del tablero"
+                    placeholderTextColor={tokens.text.muted}
+                    autoFocus
+                    selectTextOnFocus
+                    onSubmitEditing={handleRename}
+                    editable={!renameMut.isPending}
+                  />
+                </Card>
+                <Pressable
+                  onPress={handleRename}
+                  hitSlop={8}
+                  disabled={renameValue.trim().length < 2 || renameMut.isPending}
+                  style={({ pressed }) => [
+                    styles.iconBtn,
+                    pressed && styles.saveBtnPressed,
+                    (renameValue.trim().length < 2 || renameMut.isPending) && { opacity: 0.4 },
+                  ]}
+                >
+                  <Check size={14} color={palette.emerald[600]} strokeWidth={2.4} />
+                </Pressable>
+                <Pressable
+                  onPress={cancelRename}
+                  hitSlop={8}
+                  style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+                >
+                  <X size={14} color={tokens.text.muted} strokeWidth={2} />
+                </Pressable>
+              </View>
+            );
+          }
+
           return (
             <View key={a.id} style={styles.areaRow}>
               <Card
@@ -262,16 +328,25 @@ export default function BoardsIndex() {
                 <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
               </Card>
               {canManage && (
-                <Pressable
-                  onPress={() => handleDelete(a)}
-                  hitSlop={8}
-                  style={({ pressed }) => [
-                    styles.deleteBtn,
-                    pressed && styles.deleteBtnPressed,
-                  ]}
-                >
-                  <Trash2 size={14} color={palette.red[600]} strokeWidth={2} />
-                </Pressable>
+                <>
+                  <Pressable
+                    onPress={() => startRename(a)}
+                    hitSlop={8}
+                    style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
+                  >
+                    <Pencil size={14} color={tokens.text.muted} strokeWidth={2} />
+                  </Pressable>
+                  <Pressable
+                    onPress={() => handleDelete(a)}
+                    hitSlop={8}
+                    style={({ pressed }) => [
+                      styles.iconBtn,
+                      pressed && styles.deleteBtnPressed,
+                    ]}
+                  >
+                    <Trash2 size={14} color={palette.red[600]} strokeWidth={2} />
+                  </Pressable>
+                </>
               )}
             </View>
           );
@@ -473,7 +548,7 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.medium as '500',
   },
 
-  deleteBtn: {
+  iconBtn: {
     width: 40,
     alignItems: 'center',
     justifyContent: 'center',
@@ -483,7 +558,9 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.bg.surface,
     ...shadow.soft,
   },
+  iconBtnPressed: { backgroundColor: palette.slate[100], borderColor: tokens.border.default },
   deleteBtnPressed: { backgroundColor: palette.red[50], borderColor: palette.red[200] },
+  saveBtnPressed: { backgroundColor: palette.emerald[50], borderColor: palette.emerald[200] },
 
   errorCard: { borderColor: palette.red[200], backgroundColor: palette.red[50] },
   errorText: { color: palette.red[700], fontSize: typography.size.sm },

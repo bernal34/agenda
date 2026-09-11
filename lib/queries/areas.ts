@@ -36,20 +36,9 @@ export function useMyAreas(userId: string | undefined) {
   });
 }
 
-function slugify(s: string) {
-  return s
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')
-    .slice(0, 40) || `area-${Date.now()}`;
-}
-
 export interface CreateAreaInput {
   name: string;
   color: string;
-  orgId: string;
   userId: string;
   personal?: boolean;
 }
@@ -57,59 +46,66 @@ export interface CreateAreaInput {
 export function useCreateArea() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ name, color, orgId, userId, personal }: CreateAreaInput) => {
+    mutationFn: async ({ name, color, personal }: CreateAreaInput) => {
       const trimmed = name.trim();
       if (trimmed.length < 2) throw new Error('Nombre demasiado corto');
 
-      // Tableros personales: ruta vía RPC SECURITY DEFINER, así cualquier user
-      // (no solo admin de ops) puede crear el suyo.
-      if (personal) {
-        const { data, error } = await supabase.rpc('create_personal_area', {
-          p_name: trimmed,
-          p_color: color,
-        });
-        if (error) throw error;
-        return { id: data as string };
-      }
-
-      // Tableros compartidos: flujo clásico (requiere admin de ops por RLS).
-      const baseSlug = slugify(trimmed);
-      const slug = `${baseSlug}-${Math.random().toString(36).slice(2, 6)}`;
-
-      const { data: area, error: areaErr } = await supabase
-        .from('areas')
-        .insert({ name: trimmed, color, slug, org_id: orgId })
-        .select('id')
-        .single();
-      if (areaErr) throw areaErr;
-
-      const { error: memberErr } = await supabase
-        .from('area_members')
-        .insert({ area_id: area.id, user_id: userId, role: 'owner' });
-
-      if (memberErr) {
-        await supabase.from('areas').delete().eq('id', area.id);
-        throw memberErr;
-      }
-
-      return { id: area.id as string };
+      // Los dos tipos van por RPC SECURITY DEFINER (050 y 260): la policy
+      // "areas write" solo deja escribir ops.areas a un admin de ops. El slug
+      // y el alta del creador como owner los resuelve el server.
+      const { data, error } = await supabase.rpc(
+        personal ? 'create_personal_area' : 'create_area',
+        { p_name: trimmed, p_color: color },
+      );
+      if (error) throw error;
+      return { id: data as string };
     },
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ['my-areas', vars.userId] });
+      qc.invalidateQueries({ queryKey: ['admin-areas'] });
     },
   });
 }
 
+export interface RenameAreaInput {
+  areaId: string;
+  name: string;
+}
+
+/** Renombra un tablero. El server exige owner/admin del área (260). */
+export function useRenameArea() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ areaId, name }: RenameAreaInput) => {
+      const trimmed = name.trim();
+      if (trimmed.length < 2) throw new Error('Nombre demasiado corto');
+
+      const { error } = await supabase.rpc('rename_area', {
+        p_area: areaId,
+        p_name: trimmed,
+      });
+      if (error) throw error;
+      return { areaId, name: trimmed };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['my-areas'] });
+      qc.invalidateQueries({ queryKey: ['admin-areas'] });
+    },
+  });
+}
+
+/** Borra un tablero y todo lo suyo. El server exige owner/admin del área (270). */
 export function useDeleteArea() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (areaId: string) => {
-      const { error } = await supabase.from('areas').delete().eq('id', areaId);
+      const { error } = await supabase.rpc('delete_area', { p_area: areaId });
       if (error) throw error;
       return areaId;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-areas'] });
+      qc.invalidateQueries({ queryKey: ['admin-areas'] });
     },
   });
 }
