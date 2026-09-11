@@ -11,6 +11,8 @@ import {
   useNotificationsRealtime,
   useUnreadCount,
 } from '../../../lib/queries/notifications';
+import { usePushSync } from '../../../lib/queries/push';
+import { usePushNavigation } from '../../../lib/push';
 import { useAuthStore } from '../../../stores/authStore';
 import { palette, shadow, tokens, typography } from '../../../constants/theme';
 
@@ -48,6 +50,8 @@ export default function TabsLayout() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   useNotificationsRealtime(userId);
+  usePushSync(userId);
+  usePushNavigation();
 
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [showSearch, setShowSearch] = useState(false);

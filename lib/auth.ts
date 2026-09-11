@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as Linking from 'expo-linking';
 import { supabase } from './supabase';
+import { forgetThisDevice } from './push';
 
 export async function signInWithPassword(email: string, password: string) {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
@@ -9,6 +10,9 @@ export async function signInWithPassword(email: string, password: string) {
 }
 
 export async function signOut() {
+  // Mientras la sesión sigue viva: que este dispositivo deje de recibir los
+  // avisos del usuario que se va (importa en equipos compartidos).
+  await forgetThisDevice().catch(() => undefined);
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
