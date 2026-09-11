@@ -94,16 +94,18 @@ export function useRenameArea() {
   });
 }
 
+/** Borra un tablero y todo lo suyo. El server exige owner/admin del área (270). */
 export function useDeleteArea() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (areaId: string) => {
-      const { error } = await supabase.from('areas').delete().eq('id', areaId);
+      const { error } = await supabase.rpc('delete_area', { p_area: areaId });
       if (error) throw error;
       return areaId;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-areas'] });
+      qc.invalidateQueries({ queryKey: ['admin-areas'] });
     },
   });
 }
