@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Archive, ArchiveRestore, BellOff, Calendar as CalendarIcon, Clock as ClockIcon, Trash2 } from 'lucide-react-native';
+import { Archive, ArchiveRestore, BellOff, Clock as ClockIcon, Trash2 } from 'lucide-react-native';
 
 import { TaskAssignees } from '../../../components/tasks/TaskAssignees';
 import { TaskAttachments } from '../../../components/tasks/TaskAttachments';
@@ -23,6 +23,7 @@ import { TaskSubtasks } from '../../../components/tasks/TaskSubtasks';
 import { useMySnooze, useSnoozeTask } from '../../../lib/queries/assignees';
 import {
   Button,
+  DateField,
   EmptyState,
   Input,
   ModalScreen,
@@ -352,24 +353,16 @@ export default function EditTaskScreen() {
             </View>
           </View>
 
-          <Input
+          <DateField
             label="Fecha de inicio"
-            icon={CalendarIcon}
             value={startDate}
-            onChangeText={(v) => { setStartDate(v); bump(); }}
-            placeholder="DD/MM/YYYY"
-            autoCapitalize="none"
-            autoCorrect={false}
+            onChange={(v) => { setStartDate(v); bump(); }}
           />
 
-          <Input
+          <DateField
             label="Fecha final"
-            icon={CalendarIcon}
             value={dueDate}
-            onChangeText={(v) => { setDueDate(v); bump(); }}
-            placeholder="DD/MM/YYYY"
-            autoCapitalize="none"
-            autoCorrect={false}
+            onChange={(v) => { setDueDate(v); bump(); }}
           />
 
           <Input

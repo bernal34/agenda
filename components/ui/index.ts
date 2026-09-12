@@ -3,6 +3,7 @@ export { Badge, type BadgeTone } from './Badge';
 export { Button } from './Button';
 export { Card } from './Card';
 export { Chip } from './Chip';
+export { DateField } from './DateField';
 export { EmptyState } from './EmptyState';
 export { Input } from './Input';
 export { ModalScreen } from './ModalScreen';
