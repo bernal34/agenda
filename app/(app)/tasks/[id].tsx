@@ -23,6 +23,7 @@ import { TaskSubtasks } from '../../../components/tasks/TaskSubtasks';
 import { useMySnooze, useSnoozeTask } from '../../../lib/queries/assignees';
 import {
   Button,
+  EmptyState,
   Input,
   ModalScreen,
   ScreenHeader,
@@ -212,7 +213,7 @@ export default function EditTaskScreen() {
 
   // Con el header puesto desde el vamos, abrir una tarea ya no parpadea en
   // blanco: se ve la ventana y adentro la silueta del contenido.
-  if (isLoading || !task) {
+  if (isLoading) {
     return (
       <ModalScreen onClose={close} maxWidth={760}>
         <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
@@ -220,6 +221,29 @@ export default function EditTaskScreen() {
           <View style={styles.body}>
             <SkeletonList count={2} variant="row" />
           </View>
+        </SafeAreaView>
+      </ModalScreen>
+    );
+  }
+
+  // La tarea no está: la borraron, o el aviso que abrió esta pantalla apunta a
+  // una tarea vieja. Antes esto caía en la misma rama que "cargando", así que
+  // la pantalla se quedaba girando para siempre sin explicar nada.
+  if (!task) {
+    return (
+      <ModalScreen onClose={close} maxWidth={560}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
+          <ScreenHeader title="Tarea" backLabel="Cerrar" onBack={close} />
+          <EmptyState
+            icon={Trash2}
+            title="Esta tarea ya no existe"
+            description="La eliminaron, o el aviso que abriste apunta a una tarea vieja."
+            action={
+              <Button variant="secondary" onPress={close}>
+                Volver
+              </Button>
+            }
+          />
         </SafeAreaView>
       </ModalScreen>
     );
