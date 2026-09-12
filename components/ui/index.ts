@@ -5,6 +5,7 @@ export { Card } from './Card';
 export { Chip } from './Chip';
 export { EmptyState } from './EmptyState';
 export { Input } from './Input';
+export { ModalScreen } from './ModalScreen';
 export { ScreenHeader } from './ScreenHeader';
 export { SectionHeader } from './SectionHeader';
 export { ShortcutsDialog, type ShortcutItem } from './ShortcutsDialog';

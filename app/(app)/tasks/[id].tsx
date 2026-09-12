@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -25,8 +24,10 @@ import { useMySnooze, useSnoozeTask } from '../../../lib/queries/assignees';
 import {
   Button,
   Input,
+  ModalScreen,
   ScreenHeader,
   SectionHeader,
+  SkeletonList,
 } from '../../../components/ui';
 import {
   palette,
@@ -209,21 +210,29 @@ export default function EditTaskScreen() {
     }
   };
 
+  // Con el header puesto desde el vamos, abrir una tarea ya no parpadea en
+  // blanco: se ve la ventana y adentro la silueta del contenido.
   if (isLoading || !task) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app, justifyContent: 'center' }}>
-        <ActivityIndicator color={tokens.brand[600]} />
-      </SafeAreaView>
+      <ModalScreen onClose={close} maxWidth={760}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
+          <ScreenHeader title="Tarea" backLabel="Cerrar" onBack={close} />
+          <View style={styles.body}>
+            <SkeletonList count={2} variant="row" />
+          </View>
+        </SafeAreaView>
+      </ModalScreen>
     );
   }
 
   const bump = () => setDirty(true);
 
   return (
+    <ModalScreen onClose={close} maxWidth={760}>
     <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScreenHeader
-          title="Detalle de tarea"
+          title="Tarea"
           backLabel="Cerrar"
           onBack={close}
           right={
@@ -496,6 +505,7 @@ export default function EditTaskScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </ModalScreen>
   );
 }
 
