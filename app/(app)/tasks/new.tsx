@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronRight, Inbox, LayoutGrid } from 'lucide-react-native';
 
 import { TaskForm } from '../../../components/tasks/TaskForm';
-import { Card, EmptyState, ScreenHeader } from '../../../components/ui';
+import { Card, EmptyState, ModalScreen, ScreenHeader } from '../../../components/ui';
 import { notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useAreaMembers } from '../../../lib/queries/assignees';
@@ -36,77 +36,81 @@ export default function NewTaskScreen() {
 
   if (!selectedArea) {
     return (
-      <SafeAreaView style={styles.safe} edges={['top']}>
-        <ScreenHeader title="Nueva tarea" backLabel="Cancelar" onBack={close} />
-        <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
-          <Text style={styles.intro}>Elegí el área donde va la tarea</Text>
-          {areas?.map((a) => (
-            <Card
-              key={a.id}
-              onPress={() => setSelectedArea(a.id)}
-              accent={a.color}
-              padding="md"
-              style={styles.areaCard}
-            >
-              <View style={[styles.iconBox, { backgroundColor: a.color + '1A' }]}>
-                <LayoutGrid size={18} color={a.color} strokeWidth={2} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.areaName}>{a.name}</Text>
-                <Text style={styles.areaRole}>{a.role}</Text>
-              </View>
-              <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
-            </Card>
-          ))}
-          {areas && areas.length === 0 && (
-            <EmptyState
-              icon={Inbox}
-              title="Sin áreas"
-              description="Todavía no sos miembro de ningún área."
-            />
-          )}
-        </ScrollView>
-      </SafeAreaView>
+      <ModalScreen onClose={close} maxWidth={560}>
+        <SafeAreaView style={styles.safe} edges={['top']}>
+          <ScreenHeader title="Nueva tarea" backLabel="Cancelar" onBack={close} />
+          <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+            <Text style={styles.intro}>Elegí el área donde va la tarea</Text>
+            {areas?.map((a) => (
+              <Card
+                key={a.id}
+                onPress={() => setSelectedArea(a.id)}
+                accent={a.color}
+                padding="md"
+                style={styles.areaCard}
+              >
+                <View style={[styles.iconBox, { backgroundColor: a.color + '1A' }]}>
+                  <LayoutGrid size={18} color={a.color} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.areaName}>{a.name}</Text>
+                  <Text style={styles.areaRole}>{a.role}</Text>
+                </View>
+                <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
+              </Card>
+            ))}
+            {areas && areas.length === 0 && (
+              <EmptyState
+                icon={Inbox}
+                title="Sin áreas"
+                description="Todavía no sos miembro de ningún área."
+              />
+            )}
+          </ScrollView>
+        </SafeAreaView>
+      </ModalScreen>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <TaskForm
-        mode="create"
-        submitting={createMut.isPending}
-        initial={{
-          status: (status as TaskStatus) ?? 'todo',
-          due_date: date ?? '',
-          assigneeIds: userId ? [userId] : [],
-        }}
-        stages={stagesQ.data}
-        members={membersQ.data}
-        currentUserId={userId}
-        showStatus
-        showProgress={false}
-        onCancel={close}
-        onSubmit={async (values) => {
-          try {
-            await createMut.mutateAsync({
-              area_id: selectedArea,
-              title: values.title,
-              description: values.description || null,
-              status: values.status,
-              priority: values.priority,
-              start_date: values.start_date || null,
-              due_date: values.due_date || null,
-              start_at: values.start_at,
-              lead_time_minutes: values.lead_time_minutes,
-              assigneeIds: values.assigneeIds,
-            });
-            close();
-          } catch (err) {
-            notify('No se pudo crear', err instanceof Error ? err.message : 'Error');
-          }
-        }}
-      />
-    </SafeAreaView>
+    <ModalScreen onClose={close} maxWidth={640}>
+      <SafeAreaView style={styles.safe} edges={['top']}>
+        <TaskForm
+          mode="create"
+          submitting={createMut.isPending}
+          initial={{
+            status: (status as TaskStatus) ?? 'todo',
+            due_date: date ?? '',
+            assigneeIds: userId ? [userId] : [],
+          }}
+          stages={stagesQ.data}
+          members={membersQ.data}
+          currentUserId={userId}
+          showStatus
+          showProgress={false}
+          onCancel={close}
+          onSubmit={async (values) => {
+            try {
+              await createMut.mutateAsync({
+                area_id: selectedArea,
+                title: values.title,
+                description: values.description || null,
+                status: values.status,
+                priority: values.priority,
+                start_date: values.start_date || null,
+                due_date: values.due_date || null,
+                start_at: values.start_at,
+                lead_time_minutes: values.lead_time_minutes,
+                assigneeIds: values.assigneeIds,
+              });
+              close();
+            } catch (err) {
+              notify('No se pudo crear', err instanceof Error ? err.message : 'Error');
+            }
+          }}
+        />
+      </SafeAreaView>
+    </ModalScreen>
   );
 }
 
