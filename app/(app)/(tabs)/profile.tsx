@@ -23,10 +23,12 @@ import {
   EmptyState,
   Input,
   SectionHeader,
+  SkeletonList,
+  TabHeader,
 } from '../../../components/ui';
 import { signOut } from '../../../lib/auth';
 import { notify } from '../../../lib/notify';
-import { useMyAreas } from '../../../lib/queries/areas';
+import { MyArea, useMyAreas } from '../../../lib/queries/areas';
 import { usePushStatus, useTogglePush, type PushStatus } from '../../../lib/queries/push';
 import {
   uploadAvatar,
@@ -35,9 +37,7 @@ import {
 } from '../../../lib/queries/profile';
 import { useAuthStore } from '../../../stores/authStore';
 import {
-  palette,
   radius,
-  shadow,
   spacing,
   tokens,
   typography,
@@ -52,11 +52,17 @@ const PUSH_COPY: Record<PushStatus, string> = {
   unsupported: 'Este dispositivo o navegador no admite notificaciones push.',
 };
 
+const ROLE_LABEL: Record<MyArea['role'], string> = {
+  owner:  'Owner',
+  admin:  'Admin',
+  member: 'Miembro',
+};
+
 export default function ProfileScreen() {
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
   const userId = user?.id;
-  const { data: profile, isLoading } = useMyProfile(userId);
+  const { data: profile, isLoading, error, refetch } = useMyProfile(userId);
   const { data: areas } = useMyAreas(userId);
   const { data: isAdmin } = useIsAdmin();
   const updateMut = useUpdateProfile();
@@ -133,139 +139,165 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Perfil</Text>
-          <Text style={styles.subtitle}>Tu cuenta y preferencias</Text>
-        </View>
-        <Button
-          variant={dirty ? 'primary' : 'secondary'}
-          size="sm"
-          loading={updateMut.isPending}
-          disabled={!dirty || updateMut.isPending}
-          onPress={handleSave}
-        >
-          Guardar
-        </Button>
-      </View>
+      <TabHeader
+        title="Perfil"
+        subtitle="Tu cuenta y preferencias"
+        right={
+          <Button
+            variant={dirty ? 'primary' : 'secondary'}
+            size="sm"
+            loading={updateMut.isPending}
+            disabled={!dirty || updateMut.isPending}
+            onPress={handleSave}
+          >
+            Guardar
+          </Button>
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {isLoading && <SkeletonList count={3} variant="row" />}
 
-        {/* Identity card */}
-        <Card padding="lg" style={styles.identityCard} elevation="card">
-          <Pressable onPress={handlePickAvatar} style={styles.avatarWrap}>
-            {profile?.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={styles.avatarLg} />
-            ) : (
-              <Avatar name={displayedName} size="xl" />
-            )}
-            <View style={styles.cameraBadge}>
-              {uploading ? (
-                <ActivityIndicator color={tokens.brand.fg} size="small" />
-              ) : (
-                <Camera size={14} color={tokens.brand.fg} strokeWidth={2.2} />
-              )}
-            </View>
-          </Pressable>
-          <Text style={styles.identityName}>{displayedName}</Text>
-          <View style={styles.identityEmail}>
-            <Mail size={12} color={tokens.text.muted} strokeWidth={2} />
-            <Text style={styles.identityEmailText}>{user?.email}</Text>
-          </View>
-        </Card>
-
-        {/* Form fields */}
-        <View style={styles.formSection}>
-          <Input
-            label="Nombre completo"
-            icon={User}
-            value={fullName}
-            onChangeText={(v) => { setFullName(v); setDirty(true); }}
-            placeholder="Tu nombre y apellido"
-          />
-          <Input
-            label="Teléfono"
-            icon={Phone}
-            value={phone}
-            onChangeText={(v) => { setPhone(v); setDirty(true); }}
-            placeholder="+52..."
-            keyboardType="phone-pad"
-          />
-        </View>
-
-        {/* Areas */}
-        <View style={styles.section}>
-          <SectionHeader title="Mis áreas" count={areas?.length} />
-          {areas && areas.length === 0 && (
-            <EmptyState title="Sin áreas asignadas" description="Hablá con tu admin para sumarte a un área." />
-          )}
-          {areas?.map((a) => (
-            <Card key={a.id} padding="md" accent={a.color} style={styles.areaRow}>
-              <Text style={styles.areaName}>{a.name}</Text>
-              <Badge customColor={a.color}>{a.role}</Badge>
-            </Card>
-          ))}
-        </View>
-
-        {/* Push notifications de este dispositivo */}
-        <View style={styles.section}>
-          <SectionHeader title="Notificaciones" />
-          <Card padding="md" style={styles.pushCard}>
-            <View style={styles.pushIcon}>
-              <Bell size={16} color={palette.brand[600]} strokeWidth={2} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.pushTitle}>Avisos en este dispositivo</Text>
-              <Text style={styles.pushSubtitle}>
-                {pushStatus ? PUSH_COPY[pushStatus] : 'Revisando…'}
-              </Text>
-            </View>
-            {(pushStatus === 'enabled' || pushStatus === 'disabled') && (
-              <Button
-                variant={pushStatus === 'enabled' ? 'secondary' : 'primary'}
-                size="sm"
-                loading={pushMut.isPending}
-                disabled={pushMut.isPending}
-                onPress={handleTogglePush}
-              >
-                {pushStatus === 'enabled' ? 'Desactivar' : 'Activar'}
-              </Button>
-            )}
+        {error && (
+          <Card padding="md" style={styles.errorCard}>
+            <Text style={styles.errorText}>
+              {error instanceof Error ? error.message : 'Error cargando tu perfil'}
+            </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={() => refetch()}
+              style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+            >
+              Reintentar
+            </Button>
           </Card>
-        </View>
-
-        {/* Admin link (solo si tenés permisos) */}
-        {isAdmin && (
-          <Pressable
-            onPress={() => router.push('/admin' as never)}
-            style={({ pressed }) => [styles.adminLink, pressed && styles.adminLinkPressed]}
-          >
-            <View style={styles.adminIcon}>
-              <Shield size={16} color={palette.brand[600]} strokeWidth={2} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.adminTitle}>Administración</Text>
-              <Text style={styles.adminSubtitle}>Usuarios y permisos</Text>
-            </View>
-            <ChevronRight size={16} color={tokens.text.muted} strokeWidth={2} />
-          </Pressable>
         )}
 
-        {/* Sign out */}
-        <Button
-          variant="secondary"
-          icon={LogOut}
-          onPress={() => signOut()}
-          fullWidth
-          style={styles.signOutBtn}
-        >
-          Cerrar sesión
-        </Button>
+        {!isLoading && !error && (
+          <>
+            {/* Identity card */}
+            <Card padding="lg" style={styles.identityCard} elevation="card">
+              <Pressable
+                onPress={handlePickAvatar}
+                style={styles.avatarWrap}
+                accessibilityLabel="Cambiar foto de perfil"
+              >
+                {profile?.avatar_url ? (
+                  <Image source={{ uri: profile.avatar_url }} style={styles.avatarLg} />
+                ) : (
+                  <Avatar name={displayedName} size="xl" />
+                )}
+                <View style={styles.cameraBadge}>
+                  {uploading ? (
+                    <ActivityIndicator color={tokens.brand.fg} size="small" />
+                  ) : (
+                    <Camera size={14} color={tokens.brand.fg} strokeWidth={2.2} />
+                  )}
+                </View>
+              </Pressable>
+              <Text style={styles.identityName}>{displayedName}</Text>
+              <View style={styles.identityEmail}>
+                <Mail size={12} color={tokens.text.muted} strokeWidth={2} />
+                <Text style={styles.identityEmailText}>{user?.email}</Text>
+              </View>
+            </Card>
+
+            {/* Form fields */}
+            <View style={styles.formSection}>
+              <Input
+                label="Nombre completo"
+                icon={User}
+                value={fullName}
+                onChangeText={(v) => { setFullName(v); setDirty(true); }}
+                placeholder="Tu nombre y apellido"
+              />
+              <Input
+                label="Teléfono"
+                icon={Phone}
+                value={phone}
+                onChangeText={(v) => { setPhone(v); setDirty(true); }}
+                placeholder="+52..."
+                keyboardType="phone-pad"
+              />
+            </View>
+
+            {/* Areas */}
+            <View style={styles.section}>
+              <SectionHeader title="Mis áreas" count={areas?.length} />
+              {areas && areas.length === 0 && (
+                <EmptyState title="Sin áreas asignadas" description="Hablá con tu admin para sumarte a un área." />
+              )}
+              {areas?.map((a) => (
+                <Card key={a.id} padding="md" accent={a.color} style={styles.areaRow}>
+                  <Text style={styles.areaName} numberOfLines={1}>{a.name}</Text>
+                  <Badge customColor={a.color}>
+                    {a.personal ? 'Personal' : ROLE_LABEL[a.role]}
+                  </Badge>
+                </Card>
+              ))}
+            </View>
+
+            {/* Push notifications de este dispositivo */}
+            <View style={styles.section}>
+              <SectionHeader title="Notificaciones" />
+              <Card padding="md" style={styles.pushCard}>
+                <View style={styles.pushIcon}>
+                  <Bell size={16} color={tokens.brand[600]} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pushTitle}>Avisos en este dispositivo</Text>
+                  <Text style={styles.pushSubtitle}>
+                    {pushStatus ? PUSH_COPY[pushStatus] : 'Revisando…'}
+                  </Text>
+                </View>
+                {(pushStatus === 'enabled' || pushStatus === 'disabled') && (
+                  <Button
+                    variant={pushStatus === 'enabled' ? 'secondary' : 'primary'}
+                    size="sm"
+                    loading={pushMut.isPending}
+                    disabled={pushMut.isPending}
+                    onPress={handleTogglePush}
+                  >
+                    {pushStatus === 'enabled' ? 'Desactivar' : 'Activar'}
+                  </Button>
+                )}
+              </Card>
+            </View>
+
+            {/* Admin link (solo si tenés permisos) */}
+            {isAdmin && (
+              <Pressable
+                onPress={() => router.push('/admin' as never)}
+                style={({ pressed }) => [styles.adminLink, pressed && styles.adminLinkPressed]}
+              >
+                <View style={styles.adminIcon}>
+                  <Shield size={16} color={tokens.brand[600]} strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.adminTitle}>Administración</Text>
+                  <Text style={styles.adminSubtitle}>Usuarios y permisos</Text>
+                </View>
+                <ChevronRight size={16} color={tokens.text.muted} strokeWidth={2} />
+              </Pressable>
+            )}
+
+            {/* Sign out */}
+            <Button
+              variant="secondary"
+              icon={LogOut}
+              onPress={() => signOut()}
+              fullWidth
+              style={styles.signOutBtn}
+            >
+              Cerrar sesión
+            </Button>
+          </>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
@@ -273,25 +305,6 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.bg.app },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-    gap: spacing[3],
-  },
-  title: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: typography.size.sm,
-    color: tokens.text.muted,
-    marginTop: spacing[1],
-  },
 
   scroll: {
     paddingHorizontal: spacing[5],
@@ -306,33 +319,32 @@ const styles = StyleSheet.create({
   avatarLg: {
     width: 96,
     height: 96,
-    borderRadius: 48,
+    borderRadius: radius.full,
     backgroundColor: tokens.bg.subtle,
   },
   cameraBadge: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: palette.brand[600],
+    backgroundColor: tokens.brand[600],
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
     borderColor: tokens.bg.surface,
-    ...shadow.soft,
   },
   identityName: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold as '600',
+    fontSize: typography.size.xl,
+    fontWeight: typography.weight.bold as '700',
     color: tokens.text.primary,
-    letterSpacing: -0.2,
+    letterSpacing: -0.3,
   },
   identityEmail: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing[1],
     marginTop: spacing[1],
   },
   identityEmailText: {
@@ -363,11 +375,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     backgroundColor: tokens.bg.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing[3],
     borderWidth: 1,
     borderColor: tokens.border.subtle,
-    ...shadow.soft,
     marginTop: spacing[3],
   },
   adminLinkPressed: { backgroundColor: tokens.bg.subtle },
@@ -375,12 +386,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: tokens.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   adminTitle: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
   },
@@ -399,12 +410,12 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: tokens.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   pushTitle: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
   },
@@ -414,6 +425,12 @@ const styles = StyleSheet.create({
     marginTop: 2,
     lineHeight: 16,
   },
+
+  errorCard: {
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 
   signOutBtn: { marginTop: spacing[2] },
 });
