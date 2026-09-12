@@ -40,7 +40,7 @@ export function Chip({ label, active = false, color, onPress, style }: Props) {
 const styles = StyleSheet.create({
   base: {
     paddingHorizontal: spacing[3],
-    paddingVertical: 6,
+    paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
     borderColor: tokens.border.default,

@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +16,7 @@ import {
   AlertTriangle,
   Plus,
   Inbox,
+  CalendarOff,
   Activity as ActivityIcon,
   ChevronRight,
   LogOut,
@@ -29,10 +29,12 @@ import { MonthCalendar } from '../../../components/calendar/MonthCalendar';
 import { WeekView } from '../../../components/calendar/WeekView';
 import { TaskCard } from '../../../components/tasks/TaskCard';
 import {
+  Button,
   Card,
   Chip,
   EmptyState,
   SectionHeader,
+  SkeletonList,
   StatCard,
 } from '../../../components/ui';
 import { useMyAreas } from '../../../lib/queries/areas';
@@ -45,9 +47,7 @@ import {
 } from '../../../lib/taskStats';
 import { useAuthStore } from '../../../stores/authStore';
 import {
-  palette,
   radius,
-  shadow,
   spacing,
   tokens,
   typography,
@@ -65,10 +65,10 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 const STATUS_ORDER: TaskStatus[] = ['in_progress', 'todo', 'in_review', 'done'];
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  todo:        palette.slate[500],
-  in_progress: palette.amber[500],
-  in_review:   palette.sky[500],
-  done:        palette.emerald[500],
+  todo:        tokens.status.todo,
+  in_progress: tokens.status.progress,
+  in_review:   tokens.status.review,
+  done:        tokens.status.done,
 };
 
 function pad(n: number) {
@@ -165,7 +165,7 @@ export default function HomeScreen() {
           </View>
           <Pressable
             onPress={() => signOut()}
-            style={styles.logoutBtn}
+            style={({ pressed }) => [styles.logoutBtn, pressed && styles.logoutBtnPressed]}
             accessibilityLabel="Cerrar sesión"
           >
             <LogOut size={18} color={tokens.text.muted as string} strokeWidth={1.8} />
@@ -178,19 +178,19 @@ export default function HomeScreen() {
             label="Hoy"
             value={todayCount}
             icon={CalendarIcon}
-            accent={palette.brand[600]}
+            accent={tokens.brand[600]}
           />
           <StatCard
             label="Vencidas"
             value={overdueCount}
             icon={AlertTriangle}
-            accent={palette.red[600]}
+            accent={tokens.feedback.errorFg}
           />
           <StatCard
             label="Hechas"
             value={doneTodayCount}
             icon={CheckCircle2}
-            accent={palette.emerald[600]}
+            accent={tokens.status.done}
           />
         </View>
 
@@ -200,7 +200,7 @@ export default function HomeScreen() {
           style={({ pressed }) => [styles.activityLink, pressed && styles.activityLinkPressed]}
         >
           <View style={styles.activityIcon}>
-            <ActivityIcon size={16} color={palette.brand[600]} strokeWidth={2} />
+            <ActivityIcon size={16} color={tokens.brand[600]} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.activityTitle}>Mi actividad</Text>
@@ -215,7 +215,7 @@ export default function HomeScreen() {
           style={({ pressed }) => [styles.activityLink, pressed && styles.activityLinkPressed]}
         >
           <View style={styles.activityIcon}>
-            <UserCheck size={16} color={palette.brand[600]} strokeWidth={2} />
+            <UserCheck size={16} color={tokens.brand[600]} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.activityTitle}>Tareas delegadas</Text>
@@ -271,14 +271,20 @@ export default function HomeScreen() {
         )}
 
         {/* States */}
-        {tasksQ.isLoading && (
-          <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />
-        )}
+        {tasksQ.isLoading && <SkeletonList count={3} />}
         {tasksQ.error && (
           <Card padding="md" style={styles.errorCard}>
             <Text style={styles.errorText}>
               {tasksQ.error instanceof Error ? tasksQ.error.message : 'Error cargando tareas'}
             </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={() => tasksQ.refetch()}
+              style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+            >
+              Reintentar
+            </Button>
           </Card>
         )}
 
@@ -317,7 +323,11 @@ export default function HomeScreen() {
               </View>
 
               {dayTasks.length === 0 ? (
-                <Text style={styles.dayEmpty}>Sin tareas en este día.</Text>
+                <EmptyState
+                  icon={CalendarOff}
+                  title="Día libre"
+                  description="No hay tareas con fecha en este día."
+                />
               ) : (
                 dayTasks.map((t) => (
                   <TaskCard
@@ -399,7 +409,11 @@ function ToggleBtn({
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.toggleBtn, active && styles.toggleBtnActive]}
+      style={({ pressed }) => [
+        styles.toggleBtn,
+        active && styles.toggleBtnActive,
+        pressed && !active && styles.toggleBtnPressed,
+      ]}
     >
       <Icon
         size={14}
@@ -425,13 +439,14 @@ const styles = StyleSheet.create({
   logoutBtn: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: tokens.bg.surface,
     borderWidth: 1,
     borderColor: tokens.border.subtle,
   },
+  logoutBtnPressed: { backgroundColor: tokens.bg.subtle },
   greeting: {
     fontSize: typography.size.sm,
     color: tokens.text.muted,
@@ -448,7 +463,7 @@ const styles = StyleSheet.create({
   date: {
     fontSize: typography.size.xs,
     color: tokens.text.muted,
-    marginTop: 4,
+    marginTop: spacing[1],
     textTransform: 'capitalize',
     fontWeight: typography.weight.medium as '500',
   },
@@ -462,40 +477,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[3],
     backgroundColor: tokens.bg.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     borderWidth: 1,
     borderColor: tokens.border.subtle,
     marginBottom: spacing[4],
-    ...shadow.soft,
   },
   activityLinkPressed: { backgroundColor: tokens.bg.subtle },
   activityIcon: {
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: tokens.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   activityTitle: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
   },
   activitySubtitle: {
     fontSize: typography.size.xs,
     color: tokens.text.muted,
-    marginTop: 1,
+    marginTop: spacing[1],
   },
 
   // Toggle
   toggle: {
     flexDirection: 'row',
     backgroundColor: tokens.bg.subtle,
-    padding: 3,
-    borderRadius: radius.lg,
+    padding: spacing[1],
+    borderRadius: radius.xl,
     marginBottom: spacing[3],
     borderWidth: 1,
     borderColor: tokens.border.subtle,
@@ -509,7 +523,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.md,
   },
-  toggleBtnActive: { backgroundColor: tokens.bg.surface, ...shadow.soft },
+  toggleBtnActive: { backgroundColor: tokens.bg.surface },
+  toggleBtnPressed: { backgroundColor: tokens.bg.muted },
   toggleText: {
     fontSize: typography.size.sm,
     color: tokens.text.muted,
@@ -537,19 +552,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   daySectionTitle: {
-    fontSize: typography.size.base,
+    fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
     textTransform: 'capitalize',
     letterSpacing: -0.2,
   },
   daySectionCount: { fontSize: typography.size.xs, color: tokens.text.muted },
-  dayEmpty: {
-    color: tokens.text.muted,
-    fontSize: typography.size.sm,
-    textAlign: 'center',
-    paddingVertical: spacing[4],
-  },
 
   addBtn: {
     flexDirection: 'row',
@@ -564,14 +573,18 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     backgroundColor: tokens.bg.surface,
   },
-  addBtnPressed: { backgroundColor: palette.brand[50], borderColor: palette.brand[300] },
+  addBtnPressed: { backgroundColor: tokens.brand[50], borderColor: tokens.border.focus },
   addBtnText: {
     color: tokens.brand[600],
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
   },
 
-  // Errors / empty
-  errorCard: { marginTop: spacing[3], borderColor: palette.red[200], backgroundColor: palette.red[50] },
-  errorText: { color: palette.red[700], fontSize: typography.size.sm },
+  // Errors
+  errorCard: {
+    marginTop: spacing[3],
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 });
