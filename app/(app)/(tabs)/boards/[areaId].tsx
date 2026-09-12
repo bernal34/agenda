@@ -1,6 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Dimensions,
   Pressable,
   ScrollView,
@@ -17,7 +16,7 @@ import { Archive, ArrowRight, CheckSquare, GripVertical, LayoutTemplate, Plus, S
 
 import { useColumnDrag } from '../../../../components/board/DraggableColumn';
 import { DragPreview, DraggableTaskCard } from '../../../../components/tasks/DraggableTaskCard';
-import { Button, Card, ScreenHeader } from '../../../../components/ui';
+import { Button, Card, OverflowMenu, ScreenHeader, SkeletonList } from '../../../../components/ui';
 import { useMyAreas } from '../../../../lib/queries/areas';
 import {
   BoardStage,
@@ -290,7 +289,9 @@ export default function KanbanBoard() {
               <Text style={styles.membersBtnText}>Cancelar</Text>
             </Pressable>
           ) : (
-            <View style={{ flexDirection: 'row', gap: 6 }}>
+            // Acción principal a la vista; la configuración del tablero, en el
+            // menú. Antes eran cinco botones con texto en un slot para uno.
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing[2] }}>
               <Pressable
                 onPress={() => setSelectionMode(true)}
                 hitSlop={6}
@@ -299,52 +300,57 @@ export default function KanbanBoard() {
                 <CheckSquare size={14} color={tokens.brand[600]} strokeWidth={2.2} />
                 <Text style={styles.membersBtnText}>Seleccionar</Text>
               </Pressable>
-              <Pressable
-                onPress={() => router.push(`/templates/${areaId}` as never)}
-                hitSlop={6}
-                style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
-              >
-                <LayoutTemplate size={14} color={tokens.brand[600]} strokeWidth={2.2} />
-                <Text style={styles.membersBtnText}>Plantillas</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push(`/custom-fields/${areaId}` as never)}
-                hitSlop={6}
-                style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
-              >
-                <Settings2 size={14} color={tokens.brand[600]} strokeWidth={2.2} />
-                <Text style={styles.membersBtnText}>Campos</Text>
-              </Pressable>
-              <Pressable
-                onPress={() => router.push(`/automations/${areaId}` as never)}
-                hitSlop={6}
-                style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
-              >
-                <Zap size={14} color={tokens.brand[600]} strokeWidth={2.2} />
-                <Text style={styles.membersBtnText}>Reglas</Text>
-              </Pressable>
-              {area && !area.personal && (
-                <Pressable
-                  onPress={() => router.push(`/area-members/${areaId}` as never)}
-                  hitSlop={6}
-                  style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
-                >
-                  <Users size={14} color={tokens.brand[600]} strokeWidth={2.2} />
-                  <Text style={styles.membersBtnText}>Miembros</Text>
-                </Pressable>
-              )}
+              <OverflowMenu
+                accessibilityLabel="Configuración del tablero"
+                items={[
+                  {
+                    label: 'Plantillas',
+                    icon: LayoutTemplate,
+                    onPress: () => router.push(`/templates/${areaId}` as never),
+                  },
+                  {
+                    label: 'Campos personalizados',
+                    icon: Settings2,
+                    onPress: () => router.push(`/custom-fields/${areaId}` as never),
+                  },
+                  {
+                    label: 'Reglas de automatización',
+                    icon: Zap,
+                    onPress: () => router.push(`/automations/${areaId}` as never),
+                  },
+                  ...(area && !area.personal
+                    ? [{
+                        label: 'Miembros',
+                        icon: Users,
+                        onPress: () => router.push(`/area-members/${areaId}` as never),
+                      }]
+                    : []),
+                ]}
+              />
             </View>
           )
         }
       />
 
       {tasksQ.isLoading && (
-        <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />
+        <View style={styles.stateWrap}>
+          <SkeletonList count={3} />
+        </View>
       )}
       {tasksQ.error && (
-        <Text style={styles.error}>
-          {tasksQ.error instanceof Error ? tasksQ.error.message : 'Error cargando tareas'}
-        </Text>
+        <Card padding="md" style={styles.errorCard}>
+          <Text style={styles.errorText}>
+            {tasksQ.error instanceof Error ? tasksQ.error.message : 'Error cargando tareas'}
+          </Text>
+          <Button
+            variant="secondary"
+            size="sm"
+            onPress={() => tasksQ.refetch()}
+            style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+          >
+            Reintentar
+          </Button>
+        </Card>
       )}
 
       <Text style={styles.hint}>
@@ -783,7 +789,14 @@ const styles = StyleSheet.create({
   },
   colorDotSelected: { borderColor: tokens.text.primary },
 
-  error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[5] },
+  stateWrap: { paddingHorizontal: spacing[3], paddingTop: spacing[2] },
+
+  errorCard: {
+    marginHorizontal: spacing[3],
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 
   membersBtn: {
     flexDirection: 'row',

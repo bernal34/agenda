@@ -7,6 +7,7 @@ export { DateField } from './DateField';
 export { EmptyState } from './EmptyState';
 export { Input } from './Input';
 export { ModalScreen } from './ModalScreen';
+export { OverflowMenu, type MenuItem } from './OverflowMenu';
 export { ScreenHeader } from './ScreenHeader';
 export { SectionHeader } from './SectionHeader';
 export { ShortcutsDialog, type ShortcutItem } from './ShortcutsDialog';
