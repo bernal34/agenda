@@ -12,7 +12,7 @@ import {
 
 import { SectionHeader } from '../ui';
 import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
-import { notify } from '../../lib/notify';
+import { confirmAction, notify } from '../../lib/notify';
 import {
   TaskAttachment,
   getAttachmentUrl,
@@ -98,11 +98,8 @@ export function TaskAttachments({ taskId }: Props) {
     }
   };
 
-  const handleDelete = (att: TaskAttachment) => {
-    const confirmed =
-      typeof window !== 'undefined'
-        ? window.confirm(`¿Quitar el adjunto "${att.filename}"?`)
-        : true;
+  const handleDelete = async (att: TaskAttachment) => {
+    const confirmed = await confirmAction(`¿Quitar el adjunto "${att.filename}"?`, undefined, 'Quitar');
     if (!confirmed) return;
     deleteMut.mutate(att, {
       onError: (err) =>

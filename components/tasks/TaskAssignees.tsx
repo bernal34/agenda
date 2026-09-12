@@ -4,7 +4,7 @@ import { Plus, X, UserPlus, Crown, Shield } from 'lucide-react-native';
 
 import { Avatar, SectionHeader } from '../ui';
 import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
-import { notify } from '../../lib/notify';
+import { confirmAction, notify } from '../../lib/notify';
 import {
   AreaMember,
   useAddAssignee,
@@ -37,12 +37,12 @@ export function TaskAssignees({ taskId, areaId, currentUserId }: Props) {
     });
   };
 
-  const handleRemove = (userId: string, name: string) => {
+  const handleRemove = async (userId: string, name: string) => {
     const isSelf = userId === currentUserId;
     const confirmMsg = isSelf
       ? '¿Sacarte como asignado de esta tarea?'
       : `¿Sacar a ${name} de la tarea?`;
-    if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) return;
+    if (!(await confirmAction(confirmMsg, undefined, 'Sacar'))) return;
     removeMut.mutate(userId, {
       onError: (err) =>
         notify('No se pudo quitar', err instanceof Error ? err.message : 'Error'),

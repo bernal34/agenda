@@ -40,7 +40,7 @@ import {
   tokens,
   typography,
 } from '../../../../constants/theme';
-import { notify } from '../../../../lib/notify';
+import { confirmAction, notify } from '../../../../lib/notify';
 
 const COLUMN_WIDTH = Math.min(300, Dimensions.get('window').width * 0.82);
 const STAGE_COLORS = [
@@ -157,7 +157,7 @@ export default function KanbanBoard() {
 
   const bulkArchive = async () => {
     if (selectedIds.size === 0) return;
-    if (typeof window !== 'undefined' && !window.confirm(`¿Archivar ${selectedIds.size} tarea(s)?`)) return;
+    if (!(await confirmAction(`¿Archivar ${selectedIds.size} tarea(s)?`, undefined, 'Archivar'))) return;
     setBulkPending(true);
     try {
       const { error } = await supabase
@@ -176,7 +176,13 @@ export default function KanbanBoard() {
 
   const bulkDelete = async () => {
     if (selectedIds.size === 0) return;
-    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar ${selectedIds.size} tarea(s)? Esto no se puede deshacer.`)) return;
+    if (
+      !(await confirmAction(
+        `¿Eliminar ${selectedIds.size} tarea(s)?`,
+        'Esto no se puede deshacer.',
+        'Eliminar',
+      ))
+    ) return;
     setBulkPending(true);
     try {
       const { error } = await supabase
@@ -249,7 +255,7 @@ export default function KanbanBoard() {
   };
 
   const handleDeleteStage = async (stage: BoardStage) => {
-    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar etapa "${stage.label}"?`)) return;
+    if (!(await confirmAction(`¿Eliminar la etapa "${stage.label}"?`, undefined, 'Eliminar'))) return;
     try {
       await deleteStageMut.mutateAsync(stage);
     } catch (err) {

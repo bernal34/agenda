@@ -15,7 +15,7 @@ import { Plus, Trash2, Zap } from 'lucide-react-native';
 
 import { Button, Card, ScreenHeader } from '../../../components/ui';
 import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
-import { notify } from '../../../lib/notify';
+import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useAreaMembers } from '../../../lib/queries/assignees';
 import { useBoardStages } from '../../../lib/queries/stages';
@@ -93,7 +93,7 @@ export default function AutomationsScreen() {
   };
 
   const handleDelete = async (r: AutomationRule) => {
-    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar regla "${r.name}"?`)) return;
+    if (!(await confirmAction(`¿Eliminar la regla "${r.name}"?`, undefined, 'Eliminar'))) return;
     try { await deleteMut.mutateAsync(r.id); }
     catch (err) { notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error'); }
   };
