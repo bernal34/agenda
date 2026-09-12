@@ -1,43 +1,70 @@
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ChevronRight, MessageSquare, Inbox } from 'lucide-react-native';
+import { ChevronRight, Hash, MessageSquare, Inbox, User, Users } from 'lucide-react-native';
 
-import { Card, EmptyState } from '../../../../components/ui';
-import { useMyChannels } from '../../../../lib/queries/channels';
+import {
+  Button,
+  Card,
+  EmptyState,
+  SkeletonList,
+  TabHeader,
+} from '../../../../components/ui';
+import { MyChannel, useMyChannels } from '../../../../lib/queries/channels';
 import { useAuthStore } from '../../../../stores/authStore';
-import { palette, radius, spacing, tokens, typography } from '../../../../constants/theme';
+import { radius, spacing, tokens, typography } from '../../../../constants/theme';
+
+const KIND_ICON = {
+  area:   Hash,
+  direct: User,
+  group:  Users,
+} as const;
+
+const KIND_LABEL = {
+  area:   'Canal de área',
+  direct: 'Mensaje directo',
+  group:  'Grupo',
+} as const;
 
 export default function ChatIndex() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
-  const { data: channels, isLoading, error } = useMyChannels(userId);
+  const { data: channels, isLoading, error, refetch } = useMyChannels(userId);
+
+  const count = channels?.length ?? 0;
+  const subtitle = count > 0 ? `${count} ${count === 1 ? 'canal' : 'canales'}` : undefined;
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Chats</Text>
-        <Text style={styles.subtitle}>Conversaciones por área</Text>
-      </View>
+      <TabHeader title="Chats" subtitle={subtitle} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {isLoading && <SkeletonList count={4} variant="row" />}
         {error && (
           <Card style={styles.errorCard} padding="md">
             <Text style={styles.errorText}>
               {error instanceof Error ? error.message : 'Error cargando canales'}
             </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={() => refetch()}
+              style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+            >
+              Reintentar
+            </Button>
           </Card>
         )}
-        {channels?.length === 0 && !isLoading && (
+        {count === 0 && !isLoading && !error && (
           <EmptyState
             icon={Inbox}
             title="Sin canales"
-            description="Todavía no estás en ningún canal."
+            description="Cada área crea su canal automáticamente. Si no ves ninguno, todavía no sos miembro de un área."
           />
         )}
-        {channels?.map((c) => {
+        {channels?.map((c: MyChannel) => {
           const tone = c.area?.color ?? tokens.brand[600];
+          const Icon = KIND_ICON[c.kind] ?? MessageSquare;
           return (
             <Card
               key={c.id}
@@ -47,11 +74,13 @@ export default function ChatIndex() {
               style={styles.row}
             >
               <View style={[styles.iconBox, { backgroundColor: tone + '1A' }]}>
-                <MessageSquare size={18} color={tone} strokeWidth={2} />
+                <Icon size={18} color={tone} strokeWidth={2} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.name}>{c.name}</Text>
-                {c.area && <Text style={styles.sub}>{c.area.name}</Text>}
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.name} numberOfLines={1}>{c.name}</Text>
+                <Text style={styles.sub} numberOfLines={1}>
+                  {c.area?.name ?? KIND_LABEL[c.kind]}
+                </Text>
               </View>
               <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
             </Card>
@@ -64,22 +93,6 @@ export default function ChatIndex() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.bg.app },
-  header: {
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-  },
-  title: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: typography.size.sm,
-    color: tokens.text.muted,
-    marginTop: spacing[1],
-  },
 
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[8] },
   row: {
@@ -107,6 +120,9 @@ const styles = StyleSheet.create({
     fontWeight: typography.weight.medium as '500',
   },
 
-  errorCard: { borderColor: palette.red[200], backgroundColor: palette.red[50] },
-  errorText: { color: palette.red[700], fontSize: typography.size.sm },
+  errorCard: {
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 });

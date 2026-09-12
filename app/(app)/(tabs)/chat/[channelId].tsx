@@ -12,9 +12,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams } from 'expo-router';
-import { Send } from 'lucide-react-native';
+import { MessageSquare, Send } from 'lucide-react-native';
 
-import { ScreenHeader } from '../../../../components/ui';
+import { Button, Card, EmptyState, ScreenHeader, Skeleton } from '../../../../components/ui';
 import { notify } from '../../../../lib/notify';
 import {
   ChannelMessage,
@@ -28,7 +28,6 @@ import { useAuthStore } from '../../../../stores/authStore';
 import {
   palette,
   radius,
-  shadow,
   spacing,
   tokens,
   typography,
@@ -42,6 +41,23 @@ function formatTime(iso: string) {
 function displayName(p: MemberProfile | undefined, fallback: string) {
   if (!p) return fallback;
   return p.full_name?.trim() || fallback;
+}
+
+/** Burbujas fantasma: la conversación aparece con su forma, no con un spinner. */
+function MessagesSkeleton() {
+  const widths = ['62%', '45%', '70%', '38%'] as const;
+  return (
+    <View accessibilityLabel="Cargando mensajes">
+      {widths.map((w, i) => (
+        <View
+          key={i}
+          style={[styles.bubbleRow, i % 2 === 1 ? styles.rowMine : styles.rowOther]}
+        >
+          <Skeleton width={w} height={38} rounded={radius.xl} />
+        </View>
+      ))}
+    </View>
+  );
 }
 
 export default function ChannelScreen() {
@@ -102,16 +118,28 @@ export default function ChannelScreen() {
           contentContainerStyle={styles.list}
           onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
         >
-          {messagesQ.isLoading && (
-            <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />
-          )}
+          {messagesQ.isLoading && <MessagesSkeleton />}
           {messagesQ.error && (
-            <Text style={styles.error}>
-              {messagesQ.error instanceof Error ? messagesQ.error.message : 'Error cargando mensajes'}
-            </Text>
+            <Card padding="md" style={styles.errorCard}>
+              <Text style={styles.errorText}>
+                {messagesQ.error instanceof Error ? messagesQ.error.message : 'Error cargando mensajes'}
+              </Text>
+              <Button
+                variant="secondary"
+                size="sm"
+                onPress={() => messagesQ.refetch()}
+                style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+              >
+                Reintentar
+              </Button>
+            </Card>
           )}
-          {messagesQ.data?.length === 0 && (
-            <Text style={styles.empty}>Sé el primero en escribir en este canal.</Text>
+          {messagesQ.data?.length === 0 && !messagesQ.error && (
+            <EmptyState
+              icon={MessageSquare}
+              title="Sin mensajes"
+              description="Sé el primero en escribir en este canal."
+            />
           )}
           {messagesQ.data?.map((m: ChannelMessage, idx) => {
             const isMine = m.author_id === userId;
@@ -160,6 +188,7 @@ export default function ChannelScreen() {
           <Pressable
             onPress={handleSend}
             disabled={!canSend}
+            accessibilityLabel="Enviar mensaje"
             style={({ pressed }) => [
               styles.sendBtn,
               !canSend && styles.sendBtnDisabled,
@@ -192,7 +221,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
   },
   bubbleMine: {
-    backgroundColor: palette.brand[600],
+    backgroundColor: tokens.brand[600],
     borderBottomRightRadius: radius.xs,
   },
   bubbleOther: {
@@ -254,17 +283,19 @@ const styles = StyleSheet.create({
     backgroundColor: tokens.bg.surface,
   },
   sendBtn: {
-    backgroundColor: palette.brand[600],
+    backgroundColor: tokens.brand[600],
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
-    ...shadow.soft,
   },
   sendBtnDisabled: { backgroundColor: palette.brand[300] },
-  sendBtnPressed: { backgroundColor: palette.brand[700] },
+  sendBtnPressed: { backgroundColor: tokens.brand[700] },
 
-  error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[4], textAlign: 'center' },
-  empty: { color: tokens.text.muted, fontSize: typography.size.sm, textAlign: 'center', padding: spacing[6] },
+  errorCard: {
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 });
