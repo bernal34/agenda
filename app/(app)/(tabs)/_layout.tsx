@@ -64,7 +64,7 @@ export default function TabsLayout() {
       { combo: 'g+i',   description: 'Ir a Inicio',           handler: () => router.push('/' as never) },
       { combo: 'g+t',   description: 'Ir a Tableros',         handler: () => router.push('/boards' as never) },
       { combo: 'g+c',   description: 'Ir a Chats',            handler: () => router.push('/chat' as never) },
-      { combo: 'g+n',   description: 'Ir a Notificaciones',   handler: () => router.push('/notifications' as never) },
+      { combo: 'g+n',   description: 'Ir a Avisos',           handler: () => router.push('/notifications' as never) },
       { combo: 'g+p',   description: 'Ir a Perfil',           handler: () => router.push('/profile' as never) },
       { combo: 'shift+?', description: 'Mostrar atajos',      handler: () => setShowShortcuts(true) },
       { combo: '?',     description: 'Mostrar atajos',        handler: () => setShowShortcuts(true) },

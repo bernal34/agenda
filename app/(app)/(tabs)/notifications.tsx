@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -19,7 +18,14 @@ import {
 } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { Card, EmptyState, SectionHeader } from '../../../components/ui';
+import {
+  Button,
+  Card,
+  EmptyState,
+  SectionHeader,
+  SkeletonList,
+  TabHeader,
+} from '../../../components/ui';
 import {
   AppNotification,
   NotificationKind,
@@ -39,8 +45,10 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   comment:          MessageSquare,
 };
 
+// Color por categoría de aviso. No hay token semántico para "mención" o
+// "comentario", así que estos salen de la paleta a propósito.
 const KIND_COLOR: Record<NotificationKind, string> = {
-  task_assigned:    palette.brand[600],
+  task_assigned:    tokens.brand[600],
   task_due:         palette.amber[600],
   task_start_soon:  palette.emerald[600],
   mention:          palette.sky[600],
@@ -109,7 +117,7 @@ function groupByTask(items: AppNotification[]): NotifGroup[] {
 export default function NotificationsScreen() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
-  const { data, isLoading, error } = useMyNotifications(userId);
+  const { data, isLoading, error, refetch } = useMyNotifications(userId);
   const markMut = useMarkRead();
   const markAllMut = useMarkAllRead();
   const markManyMut = useMarkManyRead();
@@ -143,46 +151,59 @@ export default function NotificationsScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Notificaciones</Text>
-          <Text style={styles.subtitle}>
-            {nuevas.length > 0 ? `${nuevas.length} sin leer` : 'Todo al día'}
-          </Text>
-        </View>
-        {nuevas.length > 0 && userId && (
-          <Pressable
-            onPress={() => markAllMut.mutate(userId)}
-            hitSlop={8}
-            style={({ pressed }) => [styles.markAllBtn, pressed && styles.markAllPressed]}
-          >
-            <CheckCheck size={14} color={tokens.brand[600]} strokeWidth={2.2} />
-            <Text style={styles.markAllText}>Marcar todas</Text>
-          </Pressable>
-        )}
-      </View>
+      <TabHeader
+        title="Avisos"
+        subtitle={
+          isLoading
+            ? undefined
+            : nuevas.length > 0
+              ? `${nuevas.length} sin leer`
+              : 'Todo al día'
+        }
+        right={
+          nuevas.length > 0 && userId ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={CheckCheck}
+              loading={markAllMut.isPending}
+              onPress={() => markAllMut.mutate(userId)}
+            >
+              Marcar todas
+            </Button>
+          ) : undefined
+        }
+      />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {isLoading && <SkeletonList count={4} variant="row" />}
         {error && (
           <Card style={styles.errorCard} padding="md">
             <Text style={styles.errorText}>
               {error instanceof Error ? error.message : 'Error cargando notificaciones'}
             </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={() => refetch()}
+              style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+            >
+              Reintentar
+            </Button>
           </Card>
         )}
 
-        {!isLoading && (data?.length ?? 0) === 0 && (
+        {!isLoading && !error && (data?.length ?? 0) === 0 && (
           <EmptyState
             icon={Bell}
-            title="Sin notificaciones"
-            description="Cuando algo cambie en tus tareas o canales lo vas a ver acá."
+            title="Sin novedades"
+            description="Cuando te asignen una tarea, te mencionen o comenten algo, lo vas a ver acá."
           />
         )}
 
         {groupedNuevas.length > 0 && (
           <>
-            <SectionHeader title="Bandeja" count={nuevas.length} accent={palette.brand[500]} />
+            <SectionHeader title="Bandeja" count={nuevas.length} accent={tokens.brand[500]} />
             {groupedNuevas.map((g) => (
               <NotifGroupCard
                 key={g.key}
@@ -199,7 +220,7 @@ export default function NotificationsScreen() {
             <SectionHeader
               title="Anteriores"
               count={anteriores.length}
-              accent={palette.slate[300]}
+              accent={tokens.border.strong}
             />
             {anteriores.map((n) => (
               <NotifRow key={n.id} notif={n} onPress={() => handlePress(n)} unread={false} />
@@ -223,7 +244,7 @@ function NotifGroupCard({
   onMarkRead: (e: any) => void;
 }) {
   const lastKind = group.items[0]?.kind;
-  const color = lastKind ? KIND_COLOR[lastKind] : palette.brand[500];
+  const color = lastKind ? KIND_COLOR[lastKind] : tokens.brand[500];
   return (
     <Pressable
       onPress={onOpen}
@@ -234,7 +255,7 @@ function NotifGroupCard({
         { borderLeftWidth: 3, borderLeftColor: color },
       ]}
     >
-      <View style={{ flex: 1, minWidth: 0, gap: 6 }}>
+      <View style={{ flex: 1, minWidth: 0, gap: spacing[2] }}>
         <View style={styles.rowTitleRow}>
           <Text style={styles.rowTitle} numberOfLines={1}>
             {group.taskTitle ?? 'Sin tarea'}
@@ -261,7 +282,12 @@ function NotifGroupCard({
         )}
       </View>
       {group.unreadIds.length > 0 && (
-        <Pressable onPress={onMarkRead} hitSlop={6} style={styles.markGroupBtn}>
+        <Pressable
+          onPress={onMarkRead}
+          hitSlop={6}
+          accessibilityLabel="Marcar como leído"
+          style={({ pressed }) => [styles.markGroupBtn, pressed && styles.markGroupBtnPressed]}
+        >
           <CheckCheck size={12} color={tokens.brand[600]} strokeWidth={2.2} />
         </Pressable>
       )}
@@ -315,7 +341,7 @@ function NotifRow({
         )}
         {preview && (
           <Text style={styles.rowPreview} numberOfLines={2}>
-            "{preview}"
+            {`"${preview}"`}
           </Text>
         )}
       </View>
@@ -326,42 +352,6 @@ function NotifRow({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.bg.app },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-    gap: spacing[3],
-  },
-  title: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: typography.size.sm,
-    color: tokens.text.muted,
-    marginTop: spacing[1],
-  },
-  markAllBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: spacing[3],
-    paddingVertical: 8,
-    borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
-    borderWidth: 1,
-    borderColor: palette.brand[100],
-  },
-  markAllPressed: { backgroundColor: palette.brand[100] },
-  markAllText: {
-    color: tokens.brand[600],
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.semibold as '600',
-  },
 
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[6] },
 
@@ -369,7 +359,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: tokens.bg.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing[3],
     marginBottom: spacing[2],
     borderWidth: 1,
@@ -377,8 +367,8 @@ const styles = StyleSheet.create({
     gap: spacing[3],
   },
   rowUnread: {
-    backgroundColor: palette.brand[50] + '80',
-    borderColor: palette.brand[100],
+    backgroundColor: tokens.brand[50],
+    borderColor: tokens.brand[100],
   },
   rowPressed: { backgroundColor: tokens.bg.subtle },
   iconBox: {
@@ -390,12 +380,12 @@ const styles = StyleSheet.create({
   },
   rowTitleRow: {
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
     gap: spacing[2],
   },
   rowTitle: {
-    fontSize: typography.size.sm,
+    fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
     flex: 1,
@@ -413,33 +403,44 @@ const styles = StyleSheet.create({
   rowPreview: {
     fontSize: typography.size.xs,
     color: tokens.text.muted,
-    marginTop: 4,
+    marginTop: spacing[1],
     fontStyle: 'italic',
   },
   unreadDot: {
     width: 8,
     height: 8,
-    borderRadius: 4,
-    backgroundColor: palette.brand[500],
-    marginTop: 8,
+    borderRadius: radius.full,
+    backgroundColor: tokens.brand[500],
+    marginTop: spacing[2],
   },
 
-  errorCard: { borderColor: palette.red[200], backgroundColor: palette.red[50] },
-  errorText: { color: palette.red[700], fontSize: typography.size.sm },
+  errorCard: {
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 
-  kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[1] },
   kindChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: radius.full, borderWidth: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 2,
+    borderRadius: radius.full,
+    borderWidth: 1,
   },
   kindChipText: {
     fontSize: typography.size['2xs'],
     fontWeight: typography.weight.semibold as '600',
   },
   markGroupBtn: {
-    padding: 6, borderRadius: radius.md,
-    backgroundColor: palette.brand[50], borderWidth: 1, borderColor: palette.brand[200],
+    padding: spacing[2],
+    borderRadius: radius.md,
+    backgroundColor: tokens.brand[50],
+    borderWidth: 1,
+    borderColor: tokens.brand[100],
     alignSelf: 'center',
   },
+  markGroupBtnPressed: { backgroundColor: tokens.brand[100] },
 });
