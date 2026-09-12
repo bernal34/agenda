@@ -165,6 +165,9 @@ public/      index.html (template HTML), manifest.webmanifest, sw.js (PWA + push
 ## Convenciones
 
 - **Estilos**: `StyleSheet.create` + tokens de `constants/theme.ts`. En componentes, prefiere los roles semánticos (`tokens.bg.surface`, `tokens.text.muted`) sobre `palette.*` directo. El color de marca es el púrpura `#534AB7`.
+- **Una sola capa de elevación**: las superficies se separan por su borde (`tokens.border.subtle`), no por sombra. `Card` viene con `elevation="none"`; pasa `elevation="card"` solo a lo que flota de verdad (modales, hojas, la tarjeta en arrastre). Nada lleva borde y sombra a la vez.
+- **Encabezados**: `TabHeader` en las pantallas de tab y `ScreenHeader` en las de stack; ambos con el título a `2xl`/bold, para que entrar a un tablero no se sienta un nivel más abajo. No escribas el header a mano.
+- **Carga**: `SkeletonList` (`variant="task" | "row"`) en vez de un `ActivityIndicator` suelto, y `EmptyState` para los vacíos. Los errores van con `tokens.feedback.*` y botón de reintentar (`refetch`).
 - **Queries**: cada acceso a Supabase va como hook de React Query en `lib/queries/<dominio>.ts`. Después de una mutación, invalida todas las keys afectadas (ver `admin.ts` como referencia).
 - **Lógica pura** (mapeos, fechas, stats, grilla de calendario) va en `lib/*.ts` sin dependencias de Supabase, con test en `lib/__tests__/`. Es la única parte con tests; mantenla así.
 - **Alertas**: usa `notify()` de `lib/notify.ts` (hace `window.alert` en web y `Alert.alert` en nativo), no `Alert` directo. Para confirmar algo destructivo, `confirmAction(title, message?, confirmLabel?)` del mismo archivo, que devuelve `Promise<boolean>`. Nunca `window.confirm` a pelo: en nativo no existe `window`, y el patrón viejo (`typeof window !== 'undefined' ? window.confirm(...) : true`) ejecutaba la acción sin preguntar en iOS y Android.

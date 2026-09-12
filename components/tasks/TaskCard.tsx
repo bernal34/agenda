@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Calendar, Clock, AlertCircle } from 'lucide-react-native';
 
 import { Badge } from '../ui/Badge';
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
 import { isoToLocalTime } from '../../lib/dateFormat';
 import { colorForLabel } from '../../lib/labelColor';
 import { MyTask, TaskPriority, TaskStatus } from '../../lib/queries/tasks';
@@ -22,10 +22,10 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
 };
 
 const STATUS_COLOR: Record<TaskStatus, string> = {
-  todo:        palette.slate[500],
-  in_progress: palette.amber[500],
-  in_review:   palette.sky[500],
-  done:        palette.emerald[500],
+  todo:        tokens.status.todo,
+  in_progress: tokens.status.progress,
+  in_review:   tokens.status.review,
+  done:        tokens.status.done,
 };
 
 function formatDate(iso: string | null) {
@@ -148,13 +148,12 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
 const styles = StyleSheet.create({
   card: {
     backgroundColor: tokens.bg.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing[3],
     marginBottom: spacing[2],
     borderWidth: 1,
     borderColor: tokens.border.subtle,
     borderLeftWidth: 3,
-    ...shadow.soft,
   },
   cardCompact: { padding: spacing[3] },
   cardPressed: { backgroundColor: tokens.bg.subtle },

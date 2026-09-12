@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
-import { spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, tokens, typography } from '../../constants/theme';
 
 interface Props {
   title: string;
@@ -55,7 +55,7 @@ const styles = StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: spacing[3],
+    paddingHorizontal: spacing[5],
     paddingVertical: spacing[3],
     backgroundColor: tokens.bg.surface,
     borderBottomWidth: 1,
@@ -81,17 +81,19 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     minWidth: 0,
   },
-  accentDot: { width: 8, height: 8, borderRadius: 4 },
+  accentDot: { width: 8, height: 8, borderRadius: radius.full },
+  // Mismo peso que el título de una tab: navegar a un tablero no debería
+  // sentirse como bajar de nivel jerárquico.
   title: {
-    fontSize: typography.size.lg,
-    fontWeight: typography.weight.semibold as '600',
+    fontSize: typography.size['2xl'],
+    fontWeight: typography.weight.bold as '700',
     color: tokens.text.primary,
-    letterSpacing: -0.2,
+    letterSpacing: -0.4,
   },
   subtitle: {
-    fontSize: typography.size.xs,
+    fontSize: typography.size.sm,
     color: tokens.text.muted,
-    marginTop: 1,
+    marginTop: spacing[1],
   },
   rightSlot: {
     minWidth: 24,

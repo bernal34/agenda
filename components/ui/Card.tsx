@@ -21,9 +21,12 @@ const PADDING: Record<Padding, number> = {
   lg:   spacing[5],
 };
 
+// Una sola capa de elevación: la superficie se distingue por su borde, y la
+// sombra queda para lo que flota de verdad (modales, arrastre, FAB). Antes
+// todo llevaba borde + sombra al 6%, así que nada se veía pulsable.
 export function Card({
   padding = 'md',
-  elevation = 'soft',
+  elevation = 'none',
   accent,
   onPress,
   pressable,

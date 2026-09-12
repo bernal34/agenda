@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
 
 interface Props {
   label: string;
@@ -46,7 +46,6 @@ const styles = StyleSheet.create({
     padding: spacing[4],
     borderWidth: 1,
     borderColor: tokens.border.subtle,
-    ...shadow.soft,
   },
   headerRow: {
     flexDirection: 'row',
@@ -64,7 +63,7 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 28,
     height: 28,
-    borderRadius: 6,
+    borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },

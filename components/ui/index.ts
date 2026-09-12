@@ -8,4 +8,6 @@ export { Input } from './Input';
 export { ScreenHeader } from './ScreenHeader';
 export { SectionHeader } from './SectionHeader';
 export { ShortcutsDialog, type ShortcutItem } from './ShortcutsDialog';
+export { Skeleton, SkeletonList, TaskCardSkeleton, ListRowSkeleton } from './Skeleton';
 export { StatCard } from './StatCard';
+export { TabHeader } from './TabHeader';

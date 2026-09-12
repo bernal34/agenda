@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,7 +22,14 @@ import {
   Users,
 } from 'lucide-react-native';
 
-import { Badge, Button, Card, EmptyState } from '../../../../components/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  SkeletonList,
+  TabHeader,
+} from '../../../../components/ui';
 import { confirmAction, notify } from '../../../../lib/notify';
 import {
   useCreateArea,
@@ -34,7 +40,7 @@ import {
   MyArea,
 } from '../../../../lib/queries/areas';
 import { useAuthStore } from '../../../../stores/authStore';
-import { palette, radius, shadow, spacing, tokens, typography } from '../../../../constants/theme';
+import { palette, radius, spacing, tokens, typography } from '../../../../constants/theme';
 
 const COLOR_SWATCHES = [
   palette.brand[500],
@@ -49,13 +55,19 @@ const COLOR_SWATCHES = [
   palette.slate[500],
 ];
 
+const ROLE_LABEL: Record<MyArea['role'], string> = {
+  owner:  'Owner',
+  admin:  'Admin',
+  member: 'Miembro',
+};
+
 export default function BoardsIndex() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
 
   useEnsurePersonalBoard(userId);
 
-  const { data: areas, isLoading, error } = useMyAreas(userId);
+  const { data: areas, isLoading, error, refetch } = useMyAreas(userId);
   const createMut = useCreateArea();
   const deleteMut = useDeleteArea();
   const renameMut = useRenameArea();
@@ -131,26 +143,25 @@ export default function BoardsIndex() {
     return a.name.localeCompare(b.name);
   });
 
+  const subtitle = creating
+    ? 'Nuevo tablero'
+    : sortedAreas.length > 0
+      ? `${sortedAreas.length} ${sortedAreas.length === 1 ? 'tablero' : 'tableros'}`
+      : undefined;
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.title}>Tableros</Text>
-          <Text style={styles.subtitle}>
-            {creating ? 'Nuevo tablero' : 'Tus áreas y tableros personales'}
-          </Text>
-        </View>
-        {!creating && (
-          <Button
-            variant="primary"
-            size="sm"
-            icon={Plus}
-            onPress={() => setCreating(true)}
-          >
-            Nuevo
-          </Button>
-        )}
-      </View>
+      <TabHeader
+        title="Tableros"
+        subtitle={subtitle}
+        right={
+          !creating ? (
+            <Button variant="primary" size="sm" icon={Plus} onPress={() => setCreating(true)}>
+              Nuevo
+            </Button>
+          ) : undefined
+        }
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -234,12 +245,20 @@ export default function BoardsIndex() {
           </Card>
         )}
 
-        {isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {isLoading && <SkeletonList count={4} variant="row" />}
         {error && (
-          <Card style={styles.errorCard} padding="md">
+          <Card padding="md" style={styles.errorCard}>
             <Text style={styles.errorText}>
               {error instanceof Error ? error.message : 'Error cargando áreas'}
             </Text>
+            <Button
+              variant="secondary"
+              size="sm"
+              onPress={() => refetch()}
+              style={{ marginTop: spacing[3], alignSelf: 'flex-start' }}
+            >
+              Reintentar
+            </Button>
           </Card>
         )}
         {sortedAreas.length === 0 && !isLoading && !creating && (
@@ -321,7 +340,7 @@ export default function BoardsIndex() {
                     {a.personal && <Badge tone="brand">Personal</Badge>}
                   </View>
                   <Text style={styles.areaRole}>
-                    {a.personal ? 'Solo vos' : a.role}
+                    {a.personal ? 'Solo vos' : ROLE_LABEL[a.role]}
                   </Text>
                 </View>
                 <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
@@ -331,6 +350,7 @@ export default function BoardsIndex() {
                   <Pressable
                     onPress={() => startRename(a)}
                     hitSlop={8}
+                    accessibilityLabel={`Renombrar ${a.name}`}
                     style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                   >
                     <Pencil size={14} color={tokens.text.muted} strokeWidth={2} />
@@ -338,6 +358,7 @@ export default function BoardsIndex() {
                   <Pressable
                     onPress={() => handleDelete(a)}
                     hitSlop={8}
+                    accessibilityLabel={`Eliminar ${a.name}`}
                     style={({ pressed }) => [
                       styles.iconBtn,
                       pressed && styles.deleteBtnPressed,
@@ -371,12 +392,13 @@ function TypeToggle({
   return (
     <Pressable
       onPress={onPress}
-      style={[
+      style={({ pressed }) => [
         styles.typeToggle,
         active && {
           backgroundColor: palette.brand[50],
           borderColor: palette.brand[500],
         },
+        pressed && !active && { backgroundColor: tokens.bg.subtle },
       ]}
     >
       <Icon
@@ -401,25 +423,6 @@ function TypeToggle({
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: tokens.bg.app },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing[5],
-    paddingTop: spacing[3],
-    paddingBottom: spacing[4],
-    gap: spacing[3],
-  },
-  title: {
-    fontSize: typography.size['2xl'],
-    fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
-    letterSpacing: -0.4,
-  },
-  subtitle: {
-    fontSize: typography.size.sm,
-    color: tokens.text.muted,
-    marginTop: spacing[1],
-  },
 
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[8] },
 
@@ -432,7 +435,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing[3],
   },
   createTitle: {
-    fontSize: typography.size.base,
+    fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold as '600',
     color: tokens.text.primary,
     letterSpacing: -0.2,
@@ -449,7 +452,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing[2],
     paddingHorizontal: spacing[3],
-    paddingVertical: 10,
+    paddingVertical: spacing[2],
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: tokens.border.default,
@@ -477,7 +480,7 @@ const styles = StyleSheet.create({
     borderColor: tokens.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
-    paddingVertical: 10,
+    paddingVertical: spacing[2],
     fontSize: typography.size.base,
     color: tokens.text.primary,
     backgroundColor: tokens.bg.surface,
@@ -485,13 +488,13 @@ const styles = StyleSheet.create({
   swatchRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: spacing[2],
     marginTop: spacing[1],
   },
   swatch: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: radius.full,
     borderWidth: 2,
     borderColor: 'transparent',
   },
@@ -500,7 +503,6 @@ const styles = StyleSheet.create({
     fontSize: typography.size.xs,
     color: tokens.text.muted,
     marginTop: spacing[3],
-    fontStyle: 'italic',
   },
   createActions: {
     flexDirection: 'row',
@@ -542,7 +544,6 @@ const styles = StyleSheet.create({
   areaRole: {
     fontSize: typography.size.xs,
     color: tokens.text.muted,
-    textTransform: 'capitalize',
     marginTop: 2,
     fontWeight: typography.weight.medium as '500',
   },
@@ -551,16 +552,18 @@ const styles = StyleSheet.create({
     width: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: tokens.border.subtle,
     backgroundColor: tokens.bg.surface,
-    ...shadow.soft,
   },
-  iconBtnPressed: { backgroundColor: palette.slate[100], borderColor: tokens.border.default },
+  iconBtnPressed: { backgroundColor: tokens.bg.subtle, borderColor: tokens.border.default },
   deleteBtnPressed: { backgroundColor: palette.red[50], borderColor: palette.red[200] },
   saveBtnPressed: { backgroundColor: palette.emerald[50], borderColor: palette.emerald[200] },
 
-  errorCard: { borderColor: palette.red[200], backgroundColor: palette.red[50] },
-  errorText: { color: palette.red[700], fontSize: typography.size.sm },
+  errorCard: {
+    backgroundColor: tokens.feedback.errorBg,
+    borderColor: tokens.border.default,
+  },
+  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
 });
