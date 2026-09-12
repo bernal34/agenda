@@ -39,7 +39,7 @@ import {
   useUserAreaMemberships,
 } from '../../lib/queries/admin';
 import { useMyProfile } from '../../lib/queries/profile';
-import { notify } from '../../lib/notify';
+import { confirmAction, notify } from '../../lib/notify';
 import { useAuthStore } from '../../stores/authStore';
 
 const ROLES: { value: MemberAssignment['role']; label: string; icon: any; color: string }[] = [
@@ -158,10 +158,12 @@ function UserMembershipsSheet({
     );
   };
 
-  const handleUnassign = (areaId: string, areaName: string) => {
-    const confirmed = typeof window !== 'undefined'
-      ? window.confirm(`¿Sacar a ${user.full_name ?? 'este usuario'} de "${areaName}"?`)
-      : true;
+  const handleUnassign = async (areaId: string, areaName: string) => {
+    const confirmed = await confirmAction(
+      `¿Sacar a ${user.full_name ?? 'este usuario'} de "${areaName}"?`,
+      undefined,
+      'Sacar',
+    );
     if (!confirmed) return;
     unassignMut.mutate(
       { user_id: user.id, area_id: areaId },

@@ -167,7 +167,7 @@ public/      index.html (template HTML), manifest.webmanifest, sw.js (PWA + push
 - **Estilos**: `StyleSheet.create` + tokens de `constants/theme.ts`. En componentes, prefiere los roles semánticos (`tokens.bg.surface`, `tokens.text.muted`) sobre `palette.*` directo. El color de marca es el púrpura `#534AB7`.
 - **Queries**: cada acceso a Supabase va como hook de React Query en `lib/queries/<dominio>.ts`. Después de una mutación, invalida todas las keys afectadas (ver `admin.ts` como referencia).
 - **Lógica pura** (mapeos, fechas, stats, grilla de calendario) va en `lib/*.ts` sin dependencias de Supabase, con test en `lib/__tests__/`. Es la única parte con tests; mantenla así.
-- **Alertas**: usa `notify()` de `lib/notify.ts` (hace `window.alert` en web y `Alert.alert` en nativo), no `Alert` directo.
+- **Alertas**: usa `notify()` de `lib/notify.ts` (hace `window.alert` en web y `Alert.alert` en nativo), no `Alert` directo. Para confirmar algo destructivo, `confirmAction(title, message?, confirmLabel?)` del mismo archivo, que devuelve `Promise<boolean>`. Nunca `window.confirm` a pelo: en nativo no existe `window`, y el patrón viejo (`typeof window !== 'undefined' ? window.confirm(...) : true`) ejecutaba la acción sin preguntar en iOS y Android.
 - **Web**: hay atajos de teclado (`c` para nueva tarea, `cmd+k` o `/` para buscar, `g+i/t/c/n/p` para navegar, `?` para ver atajos) definidos en `app/(app)/(tabs)/_layout.tsx`. Si agregas una pantalla principal, agrega su atajo.
 - TypeScript estricto. No hay tipos generados de Supabase (`types/` está vacío) y los mapeos usan `any`.
 

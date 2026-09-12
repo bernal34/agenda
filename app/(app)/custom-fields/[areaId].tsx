@@ -15,7 +15,7 @@ import { Plus, Trash2 } from 'lucide-react-native';
 
 import { Button, Card, ScreenHeader } from '../../../components/ui';
 import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
-import { notify } from '../../../lib/notify';
+import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import {
   CustomField,
@@ -65,7 +65,13 @@ export default function CustomFieldsScreen() {
   };
 
   const handleDelete = async (f: CustomField) => {
-    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar campo "${f.label}"? Se borran también los valores guardados.`)) return;
+    if (
+      !(await confirmAction(
+        `¿Eliminar el campo "${f.label}"?`,
+        'Se borran también los valores guardados.',
+        'Eliminar',
+      ))
+    ) return;
     try { await deleteMut.mutateAsync(f.id); }
     catch (err) { notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error'); }
   };

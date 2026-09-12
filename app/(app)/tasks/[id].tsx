@@ -44,7 +44,7 @@ import {
   isValidDmy,
   isValidTime,
 } from '../../../lib/dateFormat';
-import { notify } from '../../../lib/notify';
+import { confirmAction, notify } from '../../../lib/notify';
 import { useBoardStages } from '../../../lib/queries/stages';
 import {
   RecurrenceFreq,
@@ -175,7 +175,7 @@ export default function EditTaskScreen() {
 
   const handleDelete = async () => {
     if (!task) return;
-    if (typeof window !== 'undefined' && !window.confirm('¿Eliminar esta tarea?')) return;
+    if (!(await confirmAction('¿Eliminar esta tarea?', 'Esta acción no se puede deshacer.', 'Eliminar'))) return;
     try {
       await deleteMut.mutateAsync(task.id);
       close();

@@ -14,7 +14,7 @@ import { Check, ChevronDown, Search, UserMinus, UserPlus } from 'lucide-react-na
 
 import { Avatar, Card, EmptyState, ScreenHeader, SectionHeader } from '../../../components/ui';
 import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
-import { notify } from '../../../lib/notify';
+import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import {
   AreaCandidate,
@@ -69,7 +69,7 @@ export default function AreaMembersScreen() {
   };
 
   const onRemove = async (c: AreaCandidate) => {
-    if (typeof window !== 'undefined' && !window.confirm(`¿Quitar a ${c.full_name ?? 'este miembro'}?`)) return;
+    if (!(await confirmAction(`¿Quitar a ${c.full_name ?? 'este miembro'}?`, undefined, 'Quitar'))) return;
     try {
       await removeMut.mutateAsync(c.id);
     } catch (err) {

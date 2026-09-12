@@ -14,7 +14,7 @@ import { ChevronDown, ChevronRight, Play, Plus, Trash2 } from 'lucide-react-nati
 
 import { Button, Card, ScreenHeader, SectionHeader } from '../../../components/ui';
 import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
-import { notify } from '../../../lib/notify';
+import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useBoardStages } from '../../../lib/queries/stages';
 import {
@@ -67,15 +67,18 @@ export default function AreaTemplatesScreen() {
   };
 
   const handleDelete = async (t: TaskTemplate) => {
-    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar plantilla "${t.name}"?`)) return;
+    if (!(await confirmAction(`¿Eliminar la plantilla "${t.name}"?`, undefined, 'Eliminar'))) return;
     try { await deleteMut.mutateAsync(t.id); }
     catch (err) { notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error'); }
   };
 
   const handleApply = async (t: TaskTemplate) => {
-    if (typeof window !== 'undefined' && !window.confirm(`Aplicar "${t.name}" — se crearán todos los items como tareas nuevas.`) === false) {
-      // confirmed
-    }
+    const confirmed = await confirmAction(
+      `¿Aplicar "${t.name}"?`,
+      'Se crearán todos los items de la plantilla como tareas nuevas.',
+      'Aplicar',
+    );
+    if (!confirmed) return;
     try {
       const n = await applyMut.mutateAsync({ templateId: t.id, initialStatus: firstStage });
       notify('Plantilla aplicada', `Se crearon ${n} tarea(s)`);

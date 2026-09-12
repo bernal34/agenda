@@ -24,7 +24,7 @@ import {
 } from 'lucide-react-native';
 
 import { Badge, Button, Card, EmptyState } from '../../../../components/ui';
-import { notify } from '../../../../lib/notify';
+import { confirmAction, notify } from '../../../../lib/notify';
 import {
   useCreateArea,
   useDeleteArea,
@@ -108,17 +108,16 @@ export default function BoardsIndex() {
     }
   };
 
-  const handleDelete = (a: MyArea) => {
+  const handleDelete = async (a: MyArea) => {
     if (a.role !== 'owner' && a.role !== 'admin') {
       notify('Sin permiso', 'Solo el owner o admin pueden eliminar un tablero.');
       return;
     }
-    const confirmed =
-      typeof window !== 'undefined'
-        ? window.confirm(
-            `¿Eliminar el tablero "${a.name}"?\n\nSe perderán todas las tareas, sprints y canales. Esta acción no se puede deshacer.`,
-          )
-        : true;
+    const confirmed = await confirmAction(
+      `¿Eliminar el tablero "${a.name}"?`,
+      'Se perderán todas las tareas, etapas y canales. Esta acción no se puede deshacer.',
+      'Eliminar',
+    );
     if (!confirmed) return;
     deleteMut.mutate(a.id, {
       onError: (err) =>
