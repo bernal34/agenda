@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, ViewStyle } from 'react-native';
 
-import { spacing, tokens, typography } from '../../constants/theme';
+import { spacing, typography, type Tokens } from '../../constants/theme';
+import { useThemedStyles } from '../../lib/theme';
 
 interface Props {
   title: string;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export function SectionHeader({ title, count, accent, right, style }: Props) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={[styles.row, style]}>
       {accent && <View style={[styles.dot, { backgroundColor: accent }]} />}
@@ -21,7 +23,7 @@ export function SectionHeader({ title, count, accent, right, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -32,13 +34,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
   count: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 });

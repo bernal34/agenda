@@ -1,7 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { Animated, DimensionValue, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 
-import { radius, spacing, tokens } from '../../constants/theme';
+import { radius, spacing, type Tokens } from '../../constants/theme';
+import { useThemedStyles } from '../../lib/theme';
 
 interface SkeletonProps {
   width?: DimensionValue;
@@ -12,6 +13,7 @@ interface SkeletonProps {
 
 /** Bloque gris con pulso, para ocupar el lugar del contenido mientras carga. */
 export function Skeleton({ width = '100%', height = 12, rounded = radius.sm, style }: SkeletonProps) {
+  const styles = useThemedStyles(makeStyles);
   const pulse = useRef(new Animated.Value(0.5)).current;
 
   useEffect(() => {
@@ -38,6 +40,7 @@ export function Skeleton({ width = '100%', height = 12, rounded = radius.sm, sty
 
 /** Silueta de una TaskCard: badge de área, título de dos líneas y pie. */
 export function TaskCardSkeleton() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.card}>
       <Skeleton width={84} height={16} rounded={radius.full} />
@@ -53,6 +56,7 @@ export function TaskCardSkeleton() {
 
 /** Silueta de una fila con ícono, título y subtítulo (tableros, canales, avisos). */
 export function ListRowSkeleton() {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.row}>
       <Skeleton width={36} height={36} rounded={radius.md} />
@@ -81,13 +85,13 @@ export function SkeletonList({ count = 3, variant = 'task' }: SkeletonListProps)
   );
 }
 
-const styles = StyleSheet.create({
-  block: { backgroundColor: tokens.bg.subtle },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  block: { backgroundColor: t.bg.subtle },
   card: {
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     padding: spacing[3],
     marginBottom: spacing[2],
   },
@@ -100,10 +104,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     padding: spacing[4],
     marginBottom: spacing[2],
   },

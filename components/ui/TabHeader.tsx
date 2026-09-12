@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-import { spacing, tokens, typography } from '../../constants/theme';
+import { spacing, typography, type Tokens } from '../../constants/theme';
+import { useThemedStyles } from '../../lib/theme';
 
 interface Props {
   title: string;
@@ -14,6 +15,7 @@ interface Props {
  * con sus propios paddings y tamaños; esto fija la jerarquía en un solo lugar.
  */
 export function TabHeader({ title, subtitle, right }: Props) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.wrap}>
       <View style={styles.titleBlock}>
@@ -25,7 +27,7 @@ export function TabHeader({ title, subtitle, right }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -38,12 +40,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size['2xl'],
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[1],
   },
 });

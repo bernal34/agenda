@@ -9,7 +9,8 @@ import {
 } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 interface Props extends TextInputProps {
   label?: string;
@@ -23,6 +24,8 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   { label, hint, error, icon: Icon, containerStyle, onFocus, onBlur, ...rest },
   ref,
 ) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const [focused, setFocused] = useState(false);
   const hasError = !!error;
 
@@ -40,13 +43,13 @@ export const Input = forwardRef<TextInput, Props>(function Input(
         {Icon && (
           <Icon
             size={16}
-            color={hasError ? tokens.status.urgent : focused ? tokens.brand[600] : tokens.text.muted}
+            color={hasError ? t.status.urgent : focused ? t.brand[600] : t.text.muted}
             style={{ marginRight: spacing[2] }}
           />
         )}
         <TextInput
           ref={ref}
-          placeholderTextColor={tokens.text.muted}
+          placeholderTextColor={t.text.muted}
           {...rest}
           onFocus={(e) => {
             setFocused(true);
@@ -69,26 +72,26 @@ export const Input = forwardRef<TextInput, Props>(function Input(
   );
 });
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   wrap: { gap: spacing[1] },
   label: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     minHeight: 40,
   },
   fieldFocused: {
-    borderColor: tokens.brand[500],
-    shadowColor: tokens.brand[500],
+    borderColor: t.brand[500],
+    shadowColor: t.brand[500],
     shadowOpacity: 0.15,
     shadowRadius: 0,
     shadowOffset: { width: 0, height: 0 },
@@ -96,15 +99,15 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   fieldError: {
-    borderColor: tokens.status.urgent,
+    borderColor: t.status.urgent,
     borderWidth: 2,
   },
   input: {
     flex: 1,
     fontSize: typography.size.base,
-    color: tokens.text.primary,
+    color: t.text.primary,
     paddingVertical: spacing[2],
   },
-  hint: { fontSize: typography.size.xs, color: tokens.text.muted, marginLeft: spacing[1] },
-  error: { fontSize: typography.size.xs, color: tokens.status.urgent, marginLeft: spacing[1] },
+  hint: { fontSize: typography.size.xs, color: t.text.muted, marginLeft: spacing[1] },
+  error: { fontSize: typography.size.xs, color: t.status.urgent, marginLeft: spacing[1] },
 });

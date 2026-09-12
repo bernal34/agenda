@@ -14,7 +14,8 @@ import {
 import { usePushSync } from '../../../lib/queries/push';
 import { usePushNavigation } from '../../../lib/push';
 import { useAuthStore } from '../../../stores/authStore';
-import { palette, shadow, tokens, typography } from '../../../constants/theme';
+import { palette, shadow, typography, type Tokens } from '../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 
 type IconProps = { focused: boolean; color: string };
 
@@ -33,6 +34,7 @@ function TabIcon({
 function NotifTabIcon({ focused, color }: IconProps) {
   const userId = useAuthStore((s) => s.user?.id);
   const unread = useUnreadCount(userId);
+  const badgeStyles = useThemedStyles(makeBadgeStyles);
   return (
     <View style={badgeStyles.wrap}>
       <Bell size={20} color={color} strokeWidth={focused ? 2.4 : 1.8} />
@@ -49,6 +51,8 @@ export default function TabsLayout() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   useNotificationsRealtime(userId);
   usePushSync(userId);
   usePushNavigation();
@@ -93,8 +97,8 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: tokens.brand[600],
-        tabBarInactiveTintColor: tokens.text.muted,
+        tabBarActiveTintColor: t.brand[600],
+        tabBarInactiveTintColor: t.text.muted,
         tabBarStyle: [
           styles.tabBar,
           {
@@ -166,20 +170,20 @@ export default function TabsLayout() {
       hitSlop={6}
       accessibilityLabel="Nueva tarea"
     >
-      <Plus size={22} color={tokens.brand.fg} strokeWidth={2.6} />
+      <Plus size={22} color={t.brand.fg} strokeWidth={2.6} />
     </Pressable>
     </>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   fab: {
     position: 'absolute',
     right: 18,
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: tokens.brand[600],
+    backgroundColor: t.brand[600],
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
@@ -188,11 +192,11 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 8,
   },
-  fabPressed: { backgroundColor: tokens.brand[700] },
+  fabPressed: { backgroundColor: t.brand[700] },
 
   tabBar: {
-    backgroundColor: tokens.bg.surface,
-    borderTopColor: tokens.border.subtle,
+    backgroundColor: t.bg.surface,
+    borderTopColor: t.border.subtle,
     borderTopWidth: 1,
     paddingTop: 4,
     ...shadow.soft,
@@ -205,7 +209,7 @@ const styles = StyleSheet.create({
   },
 });
 
-const badgeStyles = StyleSheet.create({
+const makeBadgeStyles = (t: Tokens) => StyleSheet.create({
   wrap: { position: 'relative' },
   badge: {
     position: 'absolute',
@@ -219,10 +223,11 @@ const badgeStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: tokens.bg.surface,
+    // El anillo separa el badge de la barra: tiene que seguir a la superficie.
+    borderColor: t.bg.surface,
   },
   badgeText: {
-    color: tokens.brand.fg,
+    color: palette.white,
     fontSize: 9,
     fontWeight: typography.weight.bold as '700',
     lineHeight: 12,

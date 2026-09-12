@@ -122,6 +122,79 @@ export const tokens = {
   },
 } as const;
 
+/**
+ * `tokens` va con `as const`, así que sus valores son tipos literales
+ * ('#F8FAFC', no string). Para que la variante oscura pueda traer otros
+ * colores con la misma forma, ensanchamos las hojas a string.
+ */
+type WidenColors<T> = {
+  -readonly [K in keyof T]: T[K] extends string ? string : WidenColors<T[K]>;
+};
+
+export type Tokens = WidenColors<typeof tokens>;
+
+/**
+ * Variante oscura, con los mismos roles. Reglas que seguí:
+ * - La marca sube de luminosidad: el púrpura 600 del modo claro no contrasta
+ *   sobre fondo oscuro cuando se usa como texto o ícono.
+ * - Los tintes de marca (50/100), que en claro son fondos tenues, acá son
+ *   violáceos oscuros; si no, "fondo tenue" se convierte en un bloque brillante.
+ * - Los bordes suben, no bajan: sobre oscuro, el contraste lo da el borde claro.
+ */
+export const darkTokens: Tokens = {
+  bg: {
+    app:     palette.slate[900],
+    surface: palette.slate[800],
+    subtle:  palette.slate[700],
+    muted:   palette.slate[800],
+    inverse: palette.slate[50],
+  },
+  text: {
+    primary:   palette.slate[50],
+    secondary: palette.slate[300],
+    muted:     palette.slate[400],
+    inverse:   palette.slate[900],
+    onBrand:   palette.white,
+    link:      palette.brand[300],
+  },
+  border: {
+    subtle:   palette.slate[700],
+    default:  palette.slate[600],
+    strong:   palette.slate[500],
+    focus:    palette.brand[400],
+  },
+  brand: {
+    50:  '#1E1B3A',
+    100: '#2A2550',
+    500: '#6F63CC',
+    600: '#7E73D2',
+    700: '#6157B8',
+    fg:  palette.white,
+  },
+  status: {
+    todo:     palette.slate[400],
+    progress: palette.amber[500],
+    review:   palette.sky[500],
+    done:     palette.emerald[500],
+    urgent:   palette.red[500],
+  },
+  feedback: {
+    successBg:  '#0F2A1F',
+    successFg:  palette.emerald[200],
+    warningBg:  '#2A2110',
+    warningFg:  palette.amber[200],
+    errorBg:    '#2A1618',
+    errorFg:    palette.red[300],
+    infoBg:     '#0F2233',
+    infoFg:     palette.sky[200],
+  },
+};
+
+export const themes = {
+  light: tokens as Tokens,
+  dark: darkTokens,
+} as const;
+
 export const spacing = {
   0:  0,
   1:  4,
@@ -214,5 +287,3 @@ export const layout = {
   headerHeight: 56,
   touchTarget:  44,
 } as const;
-
-export type Tokens = typeof tokens;

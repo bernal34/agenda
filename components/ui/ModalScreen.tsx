@@ -1,6 +1,7 @@
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
 
-import { radius, shadow, spacing, tokens } from '../../constants/theme';
+import { radius, shadow, spacing, type Tokens } from '../../constants/theme';
+import { useThemedStyles } from '../../lib/theme';
 
 interface Props {
   children: React.ReactNode;
@@ -20,6 +21,8 @@ interface Props {
  * arrastrar hacia abajo.
  */
 export function ModalScreen({ children, onClose, maxWidth = 720 }: Props) {
+  const styles = useThemedStyles(makeStyles);
+
   if (Platform.OS !== 'web') return <>{children}</>;
 
   return (
@@ -34,7 +37,7 @@ export function ModalScreen({ children, onClose, maxWidth = 720 }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.45)',
@@ -45,11 +48,11 @@ const styles = StyleSheet.create({
   window: {
     width: '100%',
     maxHeight: '90%',
-    backgroundColor: tokens.bg.app,
+    backgroundColor: t.bg.app,
     borderRadius: radius['2xl'],
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: tokens.border.default,
+    borderColor: t.border.default,
     ...shadow.md,
   },
 });
