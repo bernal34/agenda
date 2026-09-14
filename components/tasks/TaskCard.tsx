@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Calendar, Clock, AlertCircle } from 'lucide-react-native';
 
 import { Badge } from '../ui/Badge';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { palette, radius, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { isoToLocalTime } from '../../lib/dateFormat';
 import { colorForLabel } from '../../lib/labelColor';
 import { MyTask, TaskPriority, TaskStatus } from '../../lib/queries/tasks';
@@ -21,11 +22,12 @@ const STATUS_LABEL: Record<TaskStatus, string> = {
   done:        'Completada',
 };
 
-const STATUS_COLOR: Record<TaskStatus, string> = {
-  todo:        tokens.status.todo,
-  in_progress: tokens.status.progress,
-  in_review:   tokens.status.review,
-  done:        tokens.status.done,
+/** El color sale del tema en tiempo de render, no de un const de módulo. */
+const STATUS_KEY: Record<TaskStatus, keyof Tokens['status']> = {
+  todo:        'todo',
+  in_progress: 'progress',
+  in_review:   'review',
+  done:        'done',
 };
 
 function formatDate(iso: string | null) {
@@ -48,6 +50,9 @@ interface Props {
 }
 
 export function TaskCard({ task, onPress, compact = false }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+
   const start = formatDate(task.start_date);
   const due = formatDate(task.due_date);
   // Mostrar rango "10 jun – 15 jun" si las dos fechas existen y son distintas.
@@ -58,7 +63,7 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
       : due ?? start ?? null;
   const overdue = isOverdue(task.due_date, task.status);
   const startTime = isoToLocalTime(task.start_at);
-  const statusColor = STATUS_COLOR[task.status];
+  const statusColor = t.status[STATUS_KEY[task.status]];
   const isDone = task.status === 'done';
 
   return (
@@ -115,18 +120,18 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
           {dateLabel && (
             <View style={styles.dueWrap}>
               {overdue ? (
-                <AlertCircle size={12} color={palette.red[600]} strokeWidth={2.2} />
+                <AlertCircle size={12} color={t.status.urgent} strokeWidth={2.2} />
               ) : (
-                <Calendar size={12} color={tokens.text.muted} strokeWidth={2} />
+                <Calendar size={12} color={t.text.muted} strokeWidth={2} />
               )}
-              <Text style={[styles.dueText, overdue && { color: palette.red[600], fontWeight: '600' }]}>
+              <Text style={[styles.dueText, overdue && { color: t.status.urgent, fontWeight: '600' }]}>
                 {dateLabel}
               </Text>
             </View>
           )}
           {startTime && (
             <View style={styles.dueWrap}>
-              <Clock size={12} color={tokens.text.muted} strokeWidth={2} />
+              <Clock size={12} color={t.text.muted} strokeWidth={2} />
               <Text style={styles.dueText}>{startTime}</Text>
             </View>
           )}
@@ -145,18 +150,18 @@ export function TaskCard({ task, onPress, compact = false }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   card: {
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     padding: spacing[3],
     marginBottom: spacing[2],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     borderLeftWidth: 3,
   },
   cardCompact: { padding: spacing[3] },
-  cardPressed: { backgroundColor: tokens.bg.subtle },
+  cardPressed: { backgroundColor: t.bg.subtle },
   cardDone: { opacity: 0.6 },
 
   headerRow: {
@@ -170,14 +175,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     marginTop: spacing[2],
     letterSpacing: -0.1,
     lineHeight: 19,
   },
   titleDone: {
     textDecorationLine: 'line-through',
-    color: tokens.text.muted,
+    color: t.text.muted,
   },
 
   labelsRow: {
@@ -200,7 +205,7 @@ const styles = StyleSheet.create({
   },
   labelMore: {
     fontSize: 10,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
   },
 
@@ -214,12 +219,12 @@ const styles = StyleSheet.create({
   dueWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },
   dueText: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
   statusText: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 
@@ -227,7 +232,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[3],
     height: 4,
     borderRadius: 2,
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 2 },

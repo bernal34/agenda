@@ -39,9 +39,10 @@ import { useAuthStore } from '../../../stores/authStore';
 import {
   radius,
   spacing,
-  tokens,
   typography,
+  type Tokens,
 } from '../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 
 const PUSH_COPY: Record<PushStatus, string> = {
   enabled: 'Recibes avisos aunque la app esté cerrada.',
@@ -60,6 +61,8 @@ const ROLE_LABEL: Record<MyArea['role'], string> = {
 
 export default function ProfileScreen() {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const user = useAuthStore((s) => s.user);
   const userId = user?.id;
   const { data: profile, isLoading, error, refetch } = useMyProfile(userId);
@@ -194,15 +197,15 @@ export default function ProfileScreen() {
                 )}
                 <View style={styles.cameraBadge}>
                   {uploading ? (
-                    <ActivityIndicator color={tokens.brand.fg} size="small" />
+                    <ActivityIndicator color={t.brand.fg} size="small" />
                   ) : (
-                    <Camera size={14} color={tokens.brand.fg} strokeWidth={2.2} />
+                    <Camera size={14} color={t.brand.fg} strokeWidth={2.2} />
                   )}
                 </View>
               </Pressable>
               <Text style={styles.identityName}>{displayedName}</Text>
               <View style={styles.identityEmail}>
-                <Mail size={12} color={tokens.text.muted} strokeWidth={2} />
+                <Mail size={12} color={t.text.muted} strokeWidth={2} />
                 <Text style={styles.identityEmailText}>{user?.email}</Text>
               </View>
             </Card>
@@ -247,7 +250,7 @@ export default function ProfileScreen() {
               <SectionHeader title="Notificaciones" />
               <Card padding="md" style={styles.pushCard}>
                 <View style={styles.pushIcon}>
-                  <Bell size={16} color={tokens.brand[600]} strokeWidth={2} />
+                  <Bell size={16} color={t.brand[600]} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.pushTitle}>Avisos en este dispositivo</Text>
@@ -276,13 +279,13 @@ export default function ProfileScreen() {
                 style={({ pressed }) => [styles.adminLink, pressed && styles.adminLinkPressed]}
               >
                 <View style={styles.adminIcon}>
-                  <Shield size={16} color={tokens.brand[600]} strokeWidth={2} />
+                  <Shield size={16} color={t.brand[600]} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.adminTitle}>Administración</Text>
                   <Text style={styles.adminSubtitle}>Usuarios y permisos</Text>
                 </View>
-                <ChevronRight size={16} color={tokens.text.muted} strokeWidth={2} />
+                <ChevronRight size={16} color={t.text.muted} strokeWidth={2} />
               </Pressable>
             )}
 
@@ -303,8 +306,8 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
 
   scroll: {
     paddingHorizontal: spacing[5],
@@ -320,25 +323,25 @@ const styles = StyleSheet.create({
     width: 96,
     height: 96,
     borderRadius: radius.full,
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
   },
   cameraBadge: {
     position: 'absolute',
     right: 0,
     bottom: 0,
-    backgroundColor: tokens.brand[600],
+    backgroundColor: t.brand[600],
     width: 32,
     height: 32,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: tokens.bg.surface,
+    borderColor: t.bg.surface,
   },
   identityName: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.3,
   },
   identityEmail: {
@@ -349,7 +352,7 @@ const styles = StyleSheet.create({
   },
   identityEmailText: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 
@@ -366,7 +369,7 @@ const styles = StyleSheet.create({
   areaName: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
     flex: 1,
   },
 
@@ -374,30 +377,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     marginTop: spacing[3],
   },
-  adminLinkPressed: { backgroundColor: tokens.bg.subtle },
+  adminLinkPressed: { backgroundColor: t.bg.subtle },
   adminIcon: {
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: tokens.brand[50],
+    backgroundColor: t.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   adminTitle: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   adminSubtitle: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 1,
   },
 
@@ -410,27 +413,27 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: tokens.brand[50],
+    backgroundColor: t.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   pushTitle: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   pushSubtitle: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 2,
     lineHeight: 16,
   },
 
   errorCard: {
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 
   signOutBtn: { marginTop: spacing[2] },
 });

@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 interface Props {
   icon?: LucideIcon;
@@ -11,11 +12,13 @@ interface Props {
 }
 
 export function EmptyState({ icon: Icon, title, description, action }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   return (
     <View style={styles.wrap}>
       {Icon && (
         <View style={styles.iconBox}>
-          <Icon size={22} color={tokens.text.muted} strokeWidth={1.6} />
+          <Icon size={22} color={t.text.muted} strokeWidth={1.6} />
         </View>
       )}
       <Text style={styles.title}>{title}</Text>
@@ -25,7 +28,7 @@ export function EmptyState({ icon: Icon, title, description, action }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   wrap: {
     paddingVertical: spacing[8],
     paddingHorizontal: spacing[5],
@@ -36,7 +39,7 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: radius.xl,
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[3],
@@ -44,12 +47,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     textAlign: 'center',
   },
   desc: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     textAlign: 'center',
     marginTop: spacing[1],
     maxWidth: 280,

@@ -2,7 +2,8 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { ChevronLeft } from 'lucide-react-native';
 
-import { radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 interface Props {
   title: string;
@@ -24,6 +25,8 @@ export function ScreenHeader({
   right,
 }: Props) {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
 
   const handleBack = () => {
     if (onBack) return onBack();
@@ -34,7 +37,7 @@ export function ScreenHeader({
   return (
     <View style={styles.wrap}>
       <Pressable onPress={handleBack} hitSlop={8} style={styles.backBtn}>
-        <ChevronLeft size={20} color={tokens.text.secondary} strokeWidth={2} />
+        <ChevronLeft size={20} color={t.text.secondary} strokeWidth={2} />
         {backLabel && <Text style={styles.backText}>{backLabel}</Text>}
       </Pressable>
 
@@ -51,15 +54,15 @@ export function ScreenHeader({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   wrap: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing[5],
     paddingVertical: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
     gap: spacing[2],
   },
   backBtn: {
@@ -71,7 +74,7 @@ const styles = StyleSheet.create({
   },
   backText: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
   titleBlock: {
@@ -87,12 +90,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size['2xl'],
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.4,
   },
   subtitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[1],
   },
   rightSlot: {

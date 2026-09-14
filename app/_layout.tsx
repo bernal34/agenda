@@ -7,6 +7,7 @@ import { ActivityIndicator, View } from 'react-native';
 
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
+import { ThemeProvider, useTheme } from '../lib/theme';
 import { tokens } from '../constants/theme';
 // SSO from the portal now uses Supabase magic-link redirects (hash tokens),
 // which detectSessionInUrl=true on the supabase client consumes automatically.
@@ -89,10 +90,18 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <QueryClientProvider client={queryClient}>
-        <StatusBar style="dark" />
-        <RootLayoutNav />
-      </QueryClientProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemedStatusBar />
+          <RootLayoutNav />
+        </QueryClientProvider>
+      </ThemeProvider>
     </GestureHandlerRootView>
   );
+}
+
+/** La barra de estado estaba fija en oscuro; ahora sigue al tema. */
+function ThemedStatusBar() {
+  const { scheme } = useTheme();
+  return <StatusBar style={scheme === 'dark' ? 'light' : 'dark'} />;
 }

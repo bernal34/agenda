@@ -35,7 +35,8 @@ import {
   useMyNotifications,
 } from '../../../lib/queries/notifications';
 import { useAuthStore } from '../../../stores/authStore';
-import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
+import { palette, radius, spacing, typography, type Tokens } from '../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 
 const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   task_assigned:    ListChecks,
@@ -45,15 +46,20 @@ const KIND_ICON: Record<NotificationKind, LucideIcon> = {
   comment:          MessageSquare,
 };
 
-// Color por categoría de aviso. No hay token semántico para "mención" o
-// "comentario", así que estos salen de la paleta a propósito.
-const KIND_COLOR: Record<NotificationKind, string> = {
-  task_assigned:    tokens.brand[600],
-  task_due:         palette.amber[600],
-  task_start_soon:  palette.emerald[600],
-  mention:          palette.sky[600],
-  comment:          palette.slate[600],
-};
+/**
+ * Color por categoría de aviso. Es función del tema porque el de marca cambia
+ * entre claro y oscuro; los otros salen de la paleta a propósito: no hay token
+ * semántico para "mención" o "comentario".
+ */
+function makeKindColor(t: Tokens): Record<NotificationKind, string> {
+  return {
+    task_assigned:    t.brand[600],
+    task_due:         palette.amber[600],
+    task_start_soon:  palette.emerald[600],
+    mention:          palette.sky[600],
+    comment:          t.text.secondary,
+  };
+}
 
 const KIND_TITLE: Record<NotificationKind, string> = {
   task_assigned:    'Nueva tarea asignada',
@@ -117,6 +123,10 @@ function groupByTask(items: AppNotification[]): NotifGroup[] {
 export default function NotificationsScreen() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+  const kindColor = useMemo(() => makeKindColor(t), [t]);
+
   const { data, isLoading, error, refetch } = useMyNotifications(userId);
   const markMut = useMarkRead();
   const markAllMut = useMarkAllRead();
@@ -203,11 +213,14 @@ export default function NotificationsScreen() {
 
         {groupedNuevas.length > 0 && (
           <>
-            <SectionHeader title="Bandeja" count={nuevas.length} accent={tokens.brand[500]} />
+            <SectionHeader title="Bandeja" count={nuevas.length} accent={t.brand[500]} />
             {groupedNuevas.map((g) => (
               <NotifGroupCard
                 key={g.key}
                 group={g}
+                kindColor={kindColor}
+                styles={styles}
+                brand={t.brand[600]}
                 onOpen={() => handleGroupOpen(g)}
                 onMarkRead={(e) => handleGroupMarkRead(g, e)}
               />
@@ -220,10 +233,17 @@ export default function NotificationsScreen() {
             <SectionHeader
               title="Anteriores"
               count={anteriores.length}
-              accent={tokens.border.strong}
+              accent={t.border.strong}
             />
             {anteriores.map((n) => (
-              <NotifRow key={n.id} notif={n} onPress={() => handlePress(n)} unread={false} />
+              <NotifRow
+                key={n.id}
+                notif={n}
+                kindColor={kindColor}
+                styles={styles}
+                onPress={() => handlePress(n)}
+                unread={false}
+              />
             ))}
           </>
         )}
@@ -234,17 +254,25 @@ export default function NotificationsScreen() {
   );
 }
 
+type Styles = ReturnType<typeof makeStyles>;
+
 function NotifGroupCard({
   group,
+  kindColor,
+  styles,
+  brand,
   onOpen,
   onMarkRead,
 }: {
   group: NotifGroup;
+  kindColor: Record<NotificationKind, string>;
+  styles: Styles;
+  brand: string;
   onOpen: () => void;
   onMarkRead: (e: any) => void;
 }) {
   const lastKind = group.items[0]?.kind;
-  const color = lastKind ? KIND_COLOR[lastKind] : tokens.brand[500];
+  const color = lastKind ? kindColor[lastKind] : brand;
   return (
     <Pressable
       onPress={onOpen}
@@ -266,9 +294,9 @@ function NotifGroupCard({
           {summarizeKinds(group.items).map((k) => {
             const Ic = KIND_ICON[k.kind];
             return (
-              <View key={k.kind} style={[styles.kindChip, { borderColor: KIND_COLOR[k.kind] + '55' }]}>
-                <Ic size={11} color={KIND_COLOR[k.kind]} strokeWidth={2.2} />
-                <Text style={[styles.kindChipText, { color: KIND_COLOR[k.kind] }]}>
+              <View key={k.kind} style={[styles.kindChip, { borderColor: kindColor[k.kind] + '55' }]}>
+                <Ic size={11} color={kindColor[k.kind]} strokeWidth={2.2} />
+                <Text style={[styles.kindChipText, { color: kindColor[k.kind] }]}>
                   {KIND_TITLE[k.kind]}{k.count > 1 ? ` ·${k.count}` : ''}
                 </Text>
               </View>
@@ -288,7 +316,7 @@ function NotifGroupCard({
           accessibilityLabel="Marcar como leído"
           style={({ pressed }) => [styles.markGroupBtn, pressed && styles.markGroupBtnPressed]}
         >
-          <CheckCheck size={12} color={tokens.brand[600]} strokeWidth={2.2} />
+          <CheckCheck size={12} color={brand} strokeWidth={2.2} />
         </Pressable>
       )}
     </Pressable>
@@ -303,17 +331,21 @@ function summarizeKinds(items: AppNotification[]) {
 
 function NotifRow({
   notif,
+  kindColor,
+  styles,
   onPress,
   unread,
 }: {
   notif: AppNotification;
+  kindColor: Record<NotificationKind, string>;
+  styles: Styles;
   onPress: () => void;
   unread: boolean;
 }) {
   const taskTitle = (notif.payload as { task_title?: string }).task_title;
   const preview = (notif.payload as { preview?: string }).preview;
   const Icon = KIND_ICON[notif.kind];
-  const color = KIND_COLOR[notif.kind];
+  const color = kindColor[notif.kind];
 
   return (
     <Pressable
@@ -350,27 +382,27 @@ function NotifRow({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
 
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[6] },
 
   row: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     padding: spacing[3],
     marginBottom: spacing[2],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     gap: spacing[3],
   },
   rowUnread: {
-    backgroundColor: tokens.brand[50],
-    borderColor: tokens.brand[100],
+    backgroundColor: t.brand[50],
+    borderColor: t.brand[100],
   },
-  rowPressed: { backgroundColor: tokens.bg.subtle },
+  rowPressed: { backgroundColor: t.bg.subtle },
   iconBox: {
     width: 32,
     height: 32,
@@ -387,22 +419,22 @@ const styles = StyleSheet.create({
   rowTitle: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     flex: 1,
   },
   rowTime: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
   rowBody: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     marginTop: 2,
   },
   rowPreview: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[1],
     fontStyle: 'italic',
   },
@@ -410,15 +442,15 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: radius.full,
-    backgroundColor: tokens.brand[500],
+    backgroundColor: t.brand[500],
     marginTop: spacing[2],
   },
 
   errorCard: {
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 
   kindRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[1] },
   kindChip: {
@@ -437,10 +469,10 @@ const styles = StyleSheet.create({
   markGroupBtn: {
     padding: spacing[2],
     borderRadius: radius.md,
-    backgroundColor: tokens.brand[50],
+    backgroundColor: t.brand[50],
     borderWidth: 1,
-    borderColor: tokens.brand[100],
+    borderColor: t.brand[100],
     alignSelf: 'center',
   },
-  markGroupBtnPressed: { backgroundColor: tokens.brand[100] },
+  markGroupBtnPressed: { backgroundColor: t.brand[100] },
 });

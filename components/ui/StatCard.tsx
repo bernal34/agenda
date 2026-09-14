@@ -1,7 +1,8 @@
 import { StyleSheet, Text, View } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { palette, radius, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 interface Props {
   label: string;
@@ -12,7 +13,9 @@ interface Props {
 }
 
 export function StatCard({ label, value, icon: Icon, accent, trend }: Props) {
-  const tone = accent ?? tokens.brand[600];
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+  const tone = accent ?? t.brand[600];
   return (
     <View style={styles.card}>
       <View style={styles.headerRow}>
@@ -38,14 +41,14 @@ export function StatCard({ label, value, icon: Icon, accent, trend }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   card: {
     flex: 1,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     padding: spacing[4],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   headerRow: {
     flexDirection: 'row',
@@ -55,7 +58,7 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
@@ -70,7 +73,7 @@ const styles = StyleSheet.create({
   value: {
     fontSize: typography.size['3xl'],
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.5,
   },
   trend: {

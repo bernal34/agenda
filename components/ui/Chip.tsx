@@ -1,6 +1,7 @@
 import { Pressable, StyleSheet, Text, ViewStyle } from 'react-native';
 
-import { radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 interface Props {
   label: string;
@@ -11,7 +12,9 @@ interface Props {
 }
 
 export function Chip({ label, active = false, color, onPress, style }: Props) {
-  const accent = color ?? tokens.brand[600];
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+  const accent = color ?? t.brand[600];
   return (
     <Pressable
       onPress={onPress}
@@ -20,7 +23,7 @@ export function Chip({ label, active = false, color, onPress, style }: Props) {
         active
           ? { backgroundColor: accent + '14', borderColor: accent }
           : pressed
-            ? { backgroundColor: tokens.bg.subtle, borderColor: tokens.border.strong }
+            ? { backgroundColor: t.bg.subtle, borderColor: t.border.strong }
             : null,
         style,
       ]}
@@ -37,18 +40,18 @@ export function Chip({ label, active = false, color, onPress, style }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   base: {
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
   text: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
 });

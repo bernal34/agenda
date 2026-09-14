@@ -1,6 +1,7 @@
 import { Pressable, StyleProp, StyleSheet, View, ViewProps, ViewStyle } from 'react-native';
 
-import { radius, shadow, spacing, tokens } from '../../constants/theme';
+import { radius, shadow, spacing, type Tokens } from '../../constants/theme';
+import { useThemedStyles } from '../../lib/theme';
 
 type Padding = 'none' | 'sm' | 'md' | 'lg';
 type Elevation = 'none' | 'soft' | 'card';
@@ -34,6 +35,8 @@ export function Card({
   children,
   ...rest
 }: Props) {
+  const styles = useThemedStyles(makeStyles);
+
   const containerStyle = [
     styles.base,
     { padding: PADDING[padding] },
@@ -59,12 +62,12 @@ export function Card({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   base: {
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
-  pressed: { backgroundColor: tokens.bg.subtle },
+  pressed: { backgroundColor: t.bg.subtle },
 });

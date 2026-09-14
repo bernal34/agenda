@@ -50,9 +50,10 @@ import {
   palette,
   radius,
   spacing,
-  tokens,
   typography,
+  type Tokens,
 } from '../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 
 type ViewMode = 'list' | 'week' | 'calendar';
 
@@ -65,11 +66,12 @@ const STATUS_LABELS: Record<TaskStatus, string> = {
 
 const STATUS_ORDER: TaskStatus[] = ['in_progress', 'todo', 'in_review', 'done'];
 
-const STATUS_COLOR: Record<TaskStatus, string> = {
-  todo:        tokens.status.todo,
-  in_progress: tokens.status.progress,
-  in_review:   tokens.status.review,
-  done:        tokens.status.done,
+/** El color sale del tema en render, no de un const de módulo. */
+const STATUS_KEY: Record<TaskStatus, keyof Tokens['status']> = {
+  todo:        'todo',
+  in_progress: 'progress',
+  in_review:   'review',
+  done:        'done',
 };
 
 function pad(n: number) {
@@ -105,6 +107,8 @@ export default function HomeScreen() {
   const user = useAuthStore((s) => s.user);
   const userId = user?.id;
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
 
   const tasksQ = useMyTasks(userId);
   const areasQ = useMyAreas(userId);
@@ -120,7 +124,7 @@ export default function HomeScreen() {
 
   const allTasks = tasksQ.data ?? [];
   const filtered = useMemo(
-    () => (areaFilter ? allTasks.filter((t) => t.area?.id === areaFilter) : allTasks),
+    () => (areaFilter ? allTasks.filter((t2) => t2.area?.id === areaFilter) : allTasks),
     [allTasks, areaFilter],
   );
 
@@ -135,7 +139,7 @@ export default function HomeScreen() {
   );
 
   const dayTasks = useMemo(
-    () => filtered.filter((t) => t.due_date === selectedDay),
+    () => filtered.filter((t2) => t2.due_date === selectedDay),
     [filtered, selectedDay],
   );
 
@@ -176,11 +180,17 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.heroStats}>
-            <HeroStat label="Hoy" value={todayCount} icon={CalendarIcon} />
+            <HeroStat label="Hoy" value={todayCount} icon={CalendarIcon} styles={styles} />
             <View style={styles.heroDivider} />
-            <HeroStat label="Vencidas" value={overdueCount} icon={AlertTriangle} alert={overdueCount > 0} />
+            <HeroStat
+              label="Vencidas"
+              value={overdueCount}
+              icon={AlertTriangle}
+              alert={overdueCount > 0}
+              styles={styles}
+            />
             <View style={styles.heroDivider} />
-            <HeroStat label="Hechas" value={doneTodayCount} icon={CheckCircle2} />
+            <HeroStat label="Hechas" value={doneTodayCount} icon={CheckCircle2} styles={styles} />
           </View>
         </View>
 
@@ -192,12 +202,16 @@ export default function HomeScreen() {
               title="Mi actividad"
               subtitle="Tu historial"
               onPress={() => router.push('/activity' as never)}
+              styles={styles}
+              t={t}
             />
             <QuickLink
               icon={UserCheck}
               title="Delegadas"
               subtitle="Las que asignaste"
               onPress={() => router.push('/delegated' as never)}
+              styles={styles}
+              t={t}
             />
           </View>
 
@@ -208,18 +222,24 @@ export default function HomeScreen() {
               icon={List}
               active={view === 'list'}
               onPress={() => setView('list')}
+              styles={styles}
+              t={t}
             />
             <ToggleBtn
               label="Semana"
               icon={CalendarRange}
               active={view === 'week'}
               onPress={() => setView('week')}
+              styles={styles}
+              t={t}
             />
             <ToggleBtn
               label="Mes"
               icon={CalendarIcon}
               active={view === 'calendar'}
               onPress={() => setView('calendar')}
+              styles={styles}
+              t={t}
             />
           </View>
 
@@ -306,11 +326,11 @@ export default function HomeScreen() {
                     description="No hay tareas con fecha en este día."
                   />
                 ) : (
-                  dayTasks.map((t) => (
+                  dayTasks.map((task) => (
                     <TaskCard
-                      key={t.id}
-                      task={t}
-                      onPress={() => router.push(`/tasks/${t.id}` as never)}
+                      key={task.id}
+                      task={task}
+                      onPress={() => router.push(`/tasks/${task.id}` as never)}
                     />
                   ))
                 )}
@@ -319,7 +339,7 @@ export default function HomeScreen() {
                   onPress={() => goAdd(selectedDay)}
                   style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
                 >
-                  <Plus size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                  <Plus size={14} color={t.brand[600]} strokeWidth={2.2} />
                   <Text style={styles.addBtnText}>Agregar tarea</Text>
                 </Pressable>
               </View>
@@ -337,13 +357,13 @@ export default function HomeScreen() {
                     <SectionHeader
                       title={STATUS_LABELS[status]}
                       count={group.length}
-                      accent={STATUS_COLOR[status]}
+                      accent={t.status[STATUS_KEY[status]]}
                     />
-                    {group.map((t) => (
+                    {group.map((task) => (
                       <TaskCard
-                        key={t.id}
-                        task={t}
-                        onPress={() => router.push(`/tasks/${t.id}` as never)}
+                        key={task.id}
+                        task={task}
+                        onPress={() => router.push(`/tasks/${task.id}` as never)}
                       />
                     ))}
                   </View>
@@ -373,21 +393,25 @@ export default function HomeScreen() {
   );
 }
 
+type Styles = ReturnType<typeof makeStyles>;
+
 function HeroStat({
   label,
   value,
   icon: Icon,
   alert,
+  styles,
 }: {
   label: string;
   value: number;
   icon: LucideIcon;
   alert?: boolean;
+  styles: Styles;
 }) {
   return (
     <View style={styles.heroStat}>
       <View style={styles.heroStatTop}>
-        <Icon size={13} color={alert ? palette.amber[200] : styles.heroStatLabel.color} strokeWidth={2.2} />
+        <Icon size={13} color={alert ? palette.amber[200] : palette.brand[200]} strokeWidth={2.2} />
         <Text style={styles.heroStatLabel}>{label}</Text>
       </View>
       <Text style={[styles.heroStatValue, alert && { color: palette.amber[200] }]}>{value}</Text>
@@ -400,11 +424,15 @@ function QuickLink({
   title,
   subtitle,
   onPress,
+  styles,
+  t,
 }: {
   icon: LucideIcon;
   title: string;
   subtitle: string;
   onPress: () => void;
+  styles: Styles;
+  t: Tokens;
 }) {
   return (
     <Pressable
@@ -412,13 +440,13 @@ function QuickLink({
       style={({ pressed }) => [styles.quickLink, pressed && styles.quickLinkPressed]}
     >
       <View style={styles.quickIcon}>
-        <Icon size={15} color={tokens.brand[600]} strokeWidth={2} />
+        <Icon size={15} color={t.brand[600]} strokeWidth={2} />
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text style={styles.quickTitle} numberOfLines={1}>{title}</Text>
         <Text style={styles.quickSubtitle} numberOfLines={1}>{subtitle}</Text>
       </View>
-      <ChevronRight size={14} color={tokens.text.muted} strokeWidth={2} />
+      <ChevronRight size={14} color={t.text.muted} strokeWidth={2} />
     </Pressable>
   );
 }
@@ -428,11 +456,15 @@ function ToggleBtn({
   icon: Icon,
   active,
   onPress,
+  styles,
+  t,
 }: {
   label: string;
   icon: typeof List;
   active: boolean;
   onPress: () => void;
+  styles: Styles;
+  t: Tokens;
 }) {
   return (
     <Pressable
@@ -445,7 +477,7 @@ function ToggleBtn({
     >
       <Icon
         size={14}
-        color={active ? tokens.text.primary : tokens.text.muted}
+        color={active ? t.text.primary : t.text.muted}
         strokeWidth={active ? 2.2 : 1.8}
       />
       <Text style={[styles.toggleText, active && styles.toggleTextActive]}>{label}</Text>
@@ -453,8 +485,10 @@ function ToggleBtn({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
+  // El hero es superficie de marca, no de tema: el púrpura se mantiene en los
+  // dos esquemas y el texto de arriba siempre va en claro.
   heroSafe: { backgroundColor: palette.brand[600] },
   scroll: { paddingBottom: spacing[10] },
 
@@ -542,42 +576,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
-  quickLinkPressed: { backgroundColor: tokens.bg.subtle },
+  quickLinkPressed: { backgroundColor: t.bg.subtle },
   quickIcon: {
     width: 30,
     height: 30,
     borderRadius: radius.md,
-    backgroundColor: tokens.brand[50],
+    backgroundColor: t.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
   },
   quickTitle: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   quickSubtitle: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 1,
   },
 
   // Toggle
   toggle: {
     flexDirection: 'row',
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     padding: spacing[1],
     borderRadius: radius.xl,
     marginBottom: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   toggleBtn: {
     flex: 1,
@@ -588,14 +622,14 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.md,
   },
-  toggleBtnActive: { backgroundColor: tokens.bg.surface },
-  toggleBtnPressed: { backgroundColor: tokens.bg.muted },
+  toggleBtnActive: { backgroundColor: t.bg.surface },
+  toggleBtnPressed: { backgroundColor: t.bg.muted },
   toggleText: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
   },
-  toggleTextActive: { color: tokens.text.primary },
+  toggleTextActive: { color: t.text.primary },
 
   // Chips
   chipsRow: {
@@ -619,11 +653,11 @@ const styles = StyleSheet.create({
   daySectionTitle: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     textTransform: 'capitalize',
     letterSpacing: -0.2,
   },
-  daySectionCount: { fontSize: typography.size.xs, color: tokens.text.muted },
+  daySectionCount: { fontSize: typography.size.xs, color: t.text.muted },
 
   addBtn: {
     flexDirection: 'row',
@@ -632,23 +666,23 @@ const styles = StyleSheet.create({
     gap: spacing[1],
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingVertical: spacing[3],
     marginTop: spacing[2],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
-  addBtnPressed: { backgroundColor: tokens.brand[50], borderColor: tokens.border.focus },
+  addBtnPressed: { backgroundColor: t.brand[50], borderColor: t.border.focus },
   addBtnText: {
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
   },
 
   // Errors
   errorCard: {
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 });

@@ -4,7 +4,8 @@ import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-r
 
 import { buildMonthCells, sameDay, toIso } from '../../lib/calendarGrid';
 import { dmyToIso, isoToDmy } from '../../lib/dateFormat';
-import { radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 const WEEKDAYS = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sa', 'Do'];
 
@@ -25,6 +26,8 @@ interface Props {
  * dependencias: la grilla sale de buildMonthCells, que ya tiene tests.
  */
 export function DateField({ label, value, onChange, placeholder = 'Sin fecha' }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const [open, setOpen] = useState(false);
   const selectedIso = dmyToIso(value);
 
@@ -53,7 +56,7 @@ export function DateField({ label, value, onChange, placeholder = 'Sin fecha' }:
         accessibilityLabel={`${label}: ${value || placeholder}`}
         style={({ pressed }) => [styles.field, pressed && styles.fieldPressed]}
       >
-        <CalendarIcon size={16} color={tokens.text.muted} strokeWidth={2} />
+        <CalendarIcon size={16} color={t.text.muted} strokeWidth={2} />
         <Text style={[styles.fieldText, !value && styles.fieldPlaceholder]}>
           {value || placeholder}
         </Text>
@@ -63,7 +66,7 @@ export function DateField({ label, value, onChange, placeholder = 'Sin fecha' }:
             hitSlop={8}
             accessibilityLabel={`Quitar ${label.toLowerCase()}`}
           >
-            <X size={14} color={tokens.text.muted} strokeWidth={2} />
+            <X size={14} color={t.text.muted} strokeWidth={2} />
           </Pressable>
         )}
       </Pressable>
@@ -78,7 +81,7 @@ export function DateField({ label, value, onChange, placeholder = 'Sin fecha' }:
                 accessibilityLabel="Mes anterior"
                 style={styles.navBtn}
               >
-                <ChevronLeft size={18} color={tokens.text.secondary} strokeWidth={2} />
+                <ChevronLeft size={18} color={t.text.secondary} strokeWidth={2} />
               </Pressable>
               <Text style={styles.monthLabel}>{monthLabel}</Text>
               <Pressable
@@ -87,7 +90,7 @@ export function DateField({ label, value, onChange, placeholder = 'Sin fecha' }:
                 accessibilityLabel="Mes siguiente"
                 style={styles.navBtn}
               >
-                <ChevronRight size={18} color={tokens.text.secondary} strokeWidth={2} />
+                <ChevronRight size={18} color={t.text.secondary} strokeWidth={2} />
               </Pressable>
             </View>
 
@@ -160,11 +163,11 @@ function startAnchor(iso: string | null): Date {
   return new Date(now.getFullYear(), now.getMonth(), 1);
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   label: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   field: {
     flexDirection: 'row',
@@ -174,17 +177,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
-  fieldPressed: { backgroundColor: tokens.bg.subtle },
+  fieldPressed: { backgroundColor: t.bg.subtle },
   fieldText: {
     flex: 1,
     fontSize: typography.size.base,
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
-  fieldPlaceholder: { color: tokens.text.muted },
+  fieldPlaceholder: { color: t.text.muted },
 
   backdrop: {
     flex: 1,
@@ -196,10 +199,10 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.default,
+    borderColor: t.border.default,
     padding: spacing[3],
     ...shadow.md,
   },
@@ -217,12 +220,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   monthLabel: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     textTransform: 'capitalize',
   },
 
@@ -231,7 +234,7 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -245,16 +248,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.md,
   },
-  dayPressed: { backgroundColor: tokens.bg.subtle },
-  dayToday: { backgroundColor: tokens.brand[50] },
-  daySelected: { backgroundColor: tokens.brand[600] },
+  dayPressed: { backgroundColor: t.bg.subtle },
+  dayToday: { backgroundColor: t.brand[50] },
+  daySelected: { backgroundColor: t.brand[600] },
   dayNum: {
     fontSize: typography.size.base,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.medium as '500',
   },
-  dayNumToday: { color: tokens.brand[700], fontWeight: typography.weight.bold as '700' },
-  dayNumSelected: { color: tokens.brand.fg, fontWeight: typography.weight.bold as '700' },
+  dayNumToday: { color: t.brand[700], fontWeight: typography.weight.bold as '700' },
+  dayNumSelected: { color: t.brand.fg, fontWeight: typography.weight.bold as '700' },
 
   footer: {
     flexDirection: 'row',
@@ -262,7 +265,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[2],
     paddingTop: spacing[2],
     borderTopWidth: 1,
-    borderTopColor: tokens.border.subtle,
+    borderTopColor: t.border.subtle,
   },
   footerBtn: {
     flex: 1,
@@ -270,12 +273,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.default,
+    borderColor: t.border.default,
   },
-  footerBtnPressed: { backgroundColor: tokens.bg.subtle },
+  footerBtnPressed: { backgroundColor: t.bg.subtle },
   footerBtnText: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.secondary,
+    color: t.text.secondary,
   },
 });

@@ -1,7 +1,9 @@
+import { useMemo } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { palette, radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme } from '../../lib/theme';
 
 type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';
@@ -31,8 +33,11 @@ export function Button({
   style,
   children,
 }: Props) {
+  const { t } = useTheme();
+  const variants = useMemo(() => makeVariants(t), [t]);
+
   const isDisabled = disabled || loading;
-  const v = VARIANT[variant];
+  const v = variants[variant];
   const s = SIZE[size];
 
   return (
@@ -62,6 +67,7 @@ export function Button({
   );
 }
 
+// Geometría y tipografía no dependen del tema, así que siguen estáticas.
 const styles = StyleSheet.create({
   base: {
     borderRadius: radius.md,
@@ -99,38 +105,41 @@ const SIZE: Record<Size, { container: ViewStyle; text: { fontSize: number }; ico
   },
 };
 
-const VARIANT: Record<Variant, {
+/** Los colores sí dependen del tema, por eso esto es una función y no un const. */
+function makeVariants(t: Tokens): Record<Variant, {
   container: ViewStyle;
   pressed: ViewStyle;
   fg: string;
   spinner: string;
-}> = {
-  primary: {
-    container: { backgroundColor: tokens.brand[600], ...shadow.soft },
-    pressed:   { backgroundColor: tokens.brand[700] },
-    fg:        tokens.brand.fg,
-    spinner:   tokens.brand.fg,
-  },
-  secondary: {
-    container: {
-      backgroundColor: tokens.bg.surface,
-      borderWidth: 1,
-      borderColor: tokens.border.strong,
+}> {
+  return {
+    primary: {
+      container: { backgroundColor: t.brand[600], ...shadow.soft },
+      pressed:   { backgroundColor: t.brand[700] },
+      fg:        t.brand.fg,
+      spinner:   t.brand.fg,
     },
-    pressed:   { backgroundColor: tokens.bg.subtle },
-    fg:        tokens.text.primary,
-    spinner:   tokens.text.primary,
-  },
-  danger: {
-    container: { backgroundColor: palette.red[600], ...shadow.soft },
-    pressed:   { backgroundColor: palette.red[700] },
-    fg:        tokens.brand.fg,
-    spinner:   tokens.brand.fg,
-  },
-  ghost: {
-    container: { backgroundColor: 'transparent' },
-    pressed:   { backgroundColor: tokens.bg.subtle },
-    fg:        tokens.text.secondary,
-    spinner:   tokens.text.secondary,
-  },
-};
+    secondary: {
+      container: {
+        backgroundColor: t.bg.surface,
+        borderWidth: 1,
+        borderColor: t.border.strong,
+      },
+      pressed:   { backgroundColor: t.bg.subtle },
+      fg:        t.text.primary,
+      spinner:   t.text.primary,
+    },
+    danger: {
+      container: { backgroundColor: palette.red[600], ...shadow.soft },
+      pressed:   { backgroundColor: palette.red[700] },
+      fg:        palette.white,
+      spinner:   palette.white,
+    },
+    ghost: {
+      container: { backgroundColor: 'transparent' },
+      pressed:   { backgroundColor: t.bg.subtle },
+      fg:        t.text.secondary,
+      spinner:   t.text.secondary,
+    },
+  };
+}

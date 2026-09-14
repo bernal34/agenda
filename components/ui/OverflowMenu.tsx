@@ -3,7 +3,8 @@ import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { MoreHorizontal } from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 
-import { radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 export interface MenuItem {
   label: string;
@@ -24,6 +25,8 @@ interface Props {
  * la acción principal.
  */
 export function OverflowMenu({ items, accessibilityLabel = 'Más acciones' }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const [open, setOpen] = useState(false);
 
   const run = (item: MenuItem) => {
@@ -39,7 +42,7 @@ export function OverflowMenu({ items, accessibilityLabel = 'Más acciones' }: Pr
         accessibilityLabel={accessibilityLabel}
         style={({ pressed }) => [styles.trigger, pressed && styles.triggerPressed]}
       >
-        <MoreHorizontal size={16} color={tokens.text.secondary} strokeWidth={2.2} />
+        <MoreHorizontal size={16} color={t.text.secondary} strokeWidth={2.2} />
       </Pressable>
 
       <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
@@ -57,7 +60,7 @@ export function OverflowMenu({ items, accessibilityLabel = 'Más acciones' }: Pr
                     pressed && styles.itemPressed,
                   ]}
                 >
-                  <Icon size={16} color={tokens.brand[600]} strokeWidth={2.2} />
+                  <Icon size={16} color={t.brand[600]} strokeWidth={2.2} />
                   <Text style={styles.itemText}>{item.label}</Text>
                 </Pressable>
               );
@@ -69,7 +72,7 @@ export function OverflowMenu({ items, accessibilityLabel = 'Más acciones' }: Pr
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   trigger: {
     width: 32,
     height: 32,
@@ -77,10 +80,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
-  triggerPressed: { backgroundColor: tokens.bg.subtle },
+  triggerPressed: { backgroundColor: t.bg.subtle },
 
   backdrop: {
     flex: 1,
@@ -92,10 +95,10 @@ const styles = StyleSheet.create({
   },
   sheet: {
     minWidth: 220,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.default,
+    borderColor: t.border.default,
     overflow: 'hidden',
     ...shadow.md,
   },
@@ -108,12 +111,12 @@ const styles = StyleSheet.create({
   },
   itemBorder: {
     borderTopWidth: 1,
-    borderTopColor: tokens.border.subtle,
+    borderTopColor: t.border.subtle,
   },
-  itemPressed: { backgroundColor: tokens.bg.subtle },
+  itemPressed: { backgroundColor: t.bg.subtle },
   itemText: {
     fontSize: typography.size.base,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.medium as '500',
   },
 });

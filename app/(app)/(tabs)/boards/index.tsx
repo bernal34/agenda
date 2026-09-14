@@ -40,8 +40,10 @@ import {
   MyArea,
 } from '../../../../lib/queries/areas';
 import { useAuthStore } from '../../../../stores/authStore';
-import { palette, radius, spacing, tokens, typography } from '../../../../constants/theme';
+import { palette, radius, spacing, typography, type Tokens } from '../../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../../lib/theme';
 
+// Colores de área: los elige el usuario y se ven igual en los dos temas.
 const COLOR_SWATCHES = [
   palette.brand[500],
   palette.emerald[500],
@@ -64,6 +66,8 @@ const ROLE_LABEL: Record<MyArea['role'], string> = {
 export default function BoardsIndex() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
 
   useEnsurePersonalBoard(userId);
 
@@ -173,7 +177,7 @@ export default function BoardsIndex() {
             <View style={styles.createHeader}>
               <Text style={styles.createTitle}>Nuevo tablero</Text>
               <Pressable onPress={resetForm} hitSlop={8}>
-                <X size={16} color={tokens.text.muted} strokeWidth={2} />
+                <X size={16} color={t.text.muted} strokeWidth={2} />
               </Pressable>
             </View>
 
@@ -185,6 +189,8 @@ export default function BoardsIndex() {
                 icon={User}
                 label="Personal"
                 hint="Solo lo ves vos"
+                styles={styles}
+                t={t}
               />
               <TypeToggle
                 active={!personal}
@@ -192,6 +198,8 @@ export default function BoardsIndex() {
                 icon={Users}
                 label="Compartido"
                 hint="Para el equipo"
+                styles={styles}
+                t={t}
               />
             </View>
 
@@ -201,7 +209,7 @@ export default function BoardsIndex() {
               value={name}
               onChangeText={setName}
               placeholder={personal ? 'Ej: Mis pendientes, Casa, Side project...' : 'Ej: Marketing, Ingeniería...'}
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
               autoFocus
               onSubmitEditing={handleCreate}
             />
@@ -289,7 +297,7 @@ export default function BoardsIndex() {
                     value={renameValue}
                     onChangeText={setRenameValue}
                     placeholder="Nombre del tablero"
-                    placeholderTextColor={tokens.text.muted}
+                    placeholderTextColor={t.text.muted}
                     autoFocus
                     selectTextOnFocus
                     onSubmitEditing={handleRename}
@@ -306,14 +314,14 @@ export default function BoardsIndex() {
                     (renameValue.trim().length < 2 || renameMut.isPending) && { opacity: 0.4 },
                   ]}
                 >
-                  <Check size={14} color={palette.emerald[600]} strokeWidth={2.4} />
+                  <Check size={14} color={t.status.done} strokeWidth={2.4} />
                 </Pressable>
                 <Pressable
                   onPress={cancelRename}
                   hitSlop={8}
                   style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                 >
-                  <X size={14} color={tokens.text.muted} strokeWidth={2} />
+                  <X size={14} color={t.text.muted} strokeWidth={2} />
                 </Pressable>
               </View>
             );
@@ -343,7 +351,7 @@ export default function BoardsIndex() {
                     {a.personal ? 'Solo vos' : ROLE_LABEL[a.role]}
                   </Text>
                 </View>
-                <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
+                <ChevronRight size={18} color={t.text.muted} strokeWidth={2} />
               </Card>
               {canManage && (
                 <>
@@ -353,7 +361,7 @@ export default function BoardsIndex() {
                     accessibilityLabel={`Renombrar ${a.name}`}
                     style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                   >
-                    <Pencil size={14} color={tokens.text.muted} strokeWidth={2} />
+                    <Pencil size={14} color={t.text.muted} strokeWidth={2} />
                   </Pressable>
                   <Pressable
                     onPress={() => handleDelete(a)}
@@ -364,7 +372,7 @@ export default function BoardsIndex() {
                       pressed && styles.deleteBtnPressed,
                     ]}
                   >
-                    <Trash2 size={14} color={palette.red[600]} strokeWidth={2} />
+                    <Trash2 size={14} color={t.status.urgent} strokeWidth={2} />
                   </Pressable>
                 </>
               )}
@@ -382,12 +390,16 @@ function TypeToggle({
   icon: Icon,
   label,
   hint,
+  styles,
+  t,
 }: {
   active: boolean;
   onPress: () => void;
   icon: typeof User;
   label: string;
   hint: string;
+  styles: ReturnType<typeof makeStyles>;
+  t: Tokens;
 }) {
   return (
     <Pressable
@@ -395,22 +407,22 @@ function TypeToggle({
       style={({ pressed }) => [
         styles.typeToggle,
         active && {
-          backgroundColor: palette.brand[50],
-          borderColor: palette.brand[500],
+          backgroundColor: t.brand[50],
+          borderColor: t.brand[500],
         },
-        pressed && !active && { backgroundColor: tokens.bg.subtle },
+        pressed && !active && { backgroundColor: t.bg.subtle },
       ]}
     >
       <Icon
         size={16}
-        color={active ? palette.brand[600] : tokens.text.muted}
+        color={active ? t.brand[600] : t.text.muted}
         strokeWidth={active ? 2.4 : 1.8}
       />
       <View style={{ flex: 1 }}>
         <Text
           style={[
             styles.typeToggleLabel,
-            active && { color: palette.brand[700], fontWeight: typography.weight.semibold as '600' },
+            active && { color: t.brand[700], fontWeight: typography.weight.semibold as '600' },
           ]}
         >
           {label}
@@ -421,8 +433,8 @@ function TypeToggle({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
 
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[8] },
 
@@ -437,7 +449,7 @@ const styles = StyleSheet.create({
   createTitle: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.2,
   },
 
@@ -455,35 +467,35 @@ const styles = StyleSheet.create({
     paddingVertical: spacing[2],
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
   typeToggleLabel: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   typeToggleHint: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 1,
   },
 
   label: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
     marginBottom: spacing[1],
   },
   input: {
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     fontSize: typography.size.base,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
   swatchRow: {
     flexDirection: 'row',
@@ -498,10 +510,10 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  swatchSelected: { borderColor: tokens.text.primary },
+  swatchSelected: { borderColor: t.text.primary },
   hint: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[3],
   },
   createActions: {
@@ -538,12 +550,12 @@ const styles = StyleSheet.create({
   areaName: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     flexShrink: 1,
   },
   areaRole: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 2,
     fontWeight: typography.weight.medium as '500',
   },
@@ -554,16 +566,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderRadius: radius.xl,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.subtle,
+    backgroundColor: t.bg.surface,
   },
-  iconBtnPressed: { backgroundColor: tokens.bg.subtle, borderColor: tokens.border.default },
-  deleteBtnPressed: { backgroundColor: palette.red[50], borderColor: palette.red[200] },
-  saveBtnPressed: { backgroundColor: palette.emerald[50], borderColor: palette.emerald[200] },
+  iconBtnPressed: { backgroundColor: t.bg.subtle, borderColor: t.border.default },
+  deleteBtnPressed: { backgroundColor: t.feedback.errorBg, borderColor: t.status.urgent },
+  saveBtnPressed: { backgroundColor: t.feedback.successBg, borderColor: t.status.done },
 
   errorCard: {
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 });

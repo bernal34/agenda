@@ -12,7 +12,8 @@ import {
 } from '../../../../components/ui';
 import { MyChannel, useMyChannels } from '../../../../lib/queries/channels';
 import { useAuthStore } from '../../../../stores/authStore';
-import { radius, spacing, tokens, typography } from '../../../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../../lib/theme';
 
 const KIND_ICON = {
   area:   Hash,
@@ -29,6 +30,8 @@ const KIND_LABEL = {
 export default function ChatIndex() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: channels, isLoading, error, refetch } = useMyChannels(userId);
 
   const count = channels?.length ?? 0;
@@ -63,7 +66,7 @@ export default function ChatIndex() {
           />
         )}
         {channels?.map((c: MyChannel) => {
-          const tone = c.area?.color ?? tokens.brand[600];
+          const tone = c.area?.color ?? t.brand[600];
           const Icon = KIND_ICON[c.kind] ?? MessageSquare;
           return (
             <Card
@@ -82,7 +85,7 @@ export default function ChatIndex() {
                   {c.area?.name ?? KIND_LABEL[c.kind]}
                 </Text>
               </View>
-              <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
+              <ChevronRight size={18} color={t.text.muted} strokeWidth={2} />
             </Card>
           );
         })}
@@ -91,8 +94,8 @@ export default function ChatIndex() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
 
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[8] },
   row: {
@@ -111,18 +114,18 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   sub: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 2,
     fontWeight: typography.weight.medium as '500',
   },
 
   errorCard: {
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 });
