@@ -12,8 +12,9 @@ import {
 import { useRouter } from 'expo-router';
 import { LayoutGrid, ListChecks, Search, User, X } from 'lucide-react-native';
 
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
 import { SearchHit, useGlobalSearch } from '../../lib/queries/search';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { Avatar } from './Avatar';
 
 interface Props {
@@ -23,6 +24,8 @@ interface Props {
 
 export function SearchDialog({ visible, onClose }: Props) {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const [q, setQ] = useState('');
   const inputRef = useRef<TextInput>(null);
   const { data, isFetching, error } = useGlobalSearch(q);
@@ -54,18 +57,18 @@ export function SearchDialog({ visible, onClose }: Props) {
       <Pressable style={styles.backdrop} onPress={onClose}>
         <Pressable style={styles.card} onPress={() => {}}>
           <View style={styles.header}>
-            <Search size={16} color={tokens.text.muted} strokeWidth={2} />
+            <Search size={16} color={t.text.muted} strokeWidth={2} />
             <TextInput
               ref={inputRef}
               style={styles.input}
               value={q}
               onChangeText={setQ}
               placeholder="Buscar tareas, tableros, personas..."
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
               autoFocus
             />
             <Pressable onPress={onClose} hitSlop={8} style={styles.closeBtn}>
-              <X size={14} color={tokens.text.muted} strokeWidth={2} />
+              <X size={14} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
 
@@ -74,7 +77,7 @@ export function SearchDialog({ visible, onClose }: Props) {
               <Text style={styles.hint}>Escribí al menos 2 caracteres.</Text>
             )}
             {isFetching && q.length >= 2 && (
-              <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 12 }} />
+              <ActivityIndicator color={t.brand[600]} style={{ marginTop: 12 }} />
             )}
             {error && (
               <Text style={styles.error}>
@@ -93,8 +96,8 @@ export function SearchDialog({ visible, onClose }: Props) {
                 onPress={() => handlePick(h)}
                 style={({ pressed }) => [styles.row, pressed && styles.rowPressed]}
               >
-                <View style={[styles.iconBox, { backgroundColor: (h.area_color ?? palette.brand[500]) + '1A' }]}>
-                  <ListChecks size={14} color={h.area_color ?? palette.brand[600]} strokeWidth={2} />
+                <View style={[styles.iconBox, { backgroundColor: (h.area_color ?? t.brand[500]) + '1A' }]}>
+                  <ListChecks size={14} color={h.area_color ?? t.brand[600]} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.rowTitle} numberOfLines={1}>{h.title}</Text>
@@ -138,10 +141,12 @@ export function SearchDialog({ visible, onClose }: Props) {
 }
 
 function SectionTitle({ label }: { label: string }) {
+  const styles = useThemedStyles(makeStyles);
   return <Text style={styles.sectionTitle}>{label}</Text>;
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  // El velo se queda fijo: oscurece lo que haya detrás en los dos esquemas.
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
@@ -152,7 +157,7 @@ const styles = StyleSheet.create({
   card: {
     width: '92%',
     maxWidth: 560,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.lg,
     overflow: 'hidden',
     ...shadow.soft,
@@ -163,23 +168,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
     gap: spacing[2],
   },
   input: {
     flex: 1,
     fontSize: typography.size.base,
-    color: tokens.text.primary,
+    color: t.text.primary,
     paddingVertical: 6,
   },
   closeBtn: { padding: 4 },
   results: { maxHeight: 480, paddingHorizontal: spacing[2], paddingVertical: spacing[2] },
-  hint: { color: tokens.text.muted, fontSize: typography.size.sm, padding: spacing[3], textAlign: 'center' },
-  error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[3] },
+  hint: { color: t.text.muted, fontSize: typography.size.sm, padding: spacing[3], textAlign: 'center' },
+  error: { color: t.feedback.errorFg, fontSize: typography.size.sm, padding: spacing[3] },
 
   sectionTitle: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -195,7 +200,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.md,
   },
-  rowPressed: { backgroundColor: palette.brand[50] },
+  rowPressed: { backgroundColor: t.brand[50] },
   iconBox: {
     width: 28,
     height: 28,
@@ -205,13 +210,13 @@ const styles = StyleSheet.create({
   },
   rowTitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.semibold as '600',
     flex: 1,
   },
   rowSub: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 2,
   },
 });

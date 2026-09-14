@@ -16,7 +16,8 @@ import { KeyRound, Mail, ArrowRight, ArrowLeft } from 'lucide-react-native';
 import { requestPasswordReset } from '../../lib/auth';
 import { notify } from '../../lib/notify';
 import { Button, Card, Input } from '../../components/ui';
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 const schema = z.object({
   email: z.string().email('Email inválido'),
@@ -28,6 +29,8 @@ export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const {
     control,
     handleSubmit,
@@ -64,7 +67,7 @@ export default function ForgotPasswordScreen() {
         >
           <View style={styles.brandBlock}>
             <View style={styles.logoMark}>
-              <KeyRound size={22} color={tokens.brand.fg} strokeWidth={2.4} />
+              <KeyRound size={22} color={t.brand.fg} strokeWidth={2.4} />
             </View>
             <Text style={styles.brandName}>Mi Agenda</Text>
             <Text style={styles.brandTagline}>Recuperar acceso</Text>
@@ -141,8 +144,8 @@ export default function ForgotPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg.app },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -153,11 +156,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   brandBlock: { alignItems: 'center', marginBottom: spacing[6] },
+  // Superficie de marca: púrpura en los dos esquemas, con el ícono en claro.
   logoMark: {
     width: 48,
     height: 48,
     borderRadius: radius.lg,
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow.md,
@@ -166,24 +170,24 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: typography.size['2xl'],
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.5,
   },
   brandTagline: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[1],
   },
   formCard: { width: '100%' },
   title: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     marginTop: spacing[1],
   },
   form: { marginTop: spacing[5], gap: spacing[3] },
@@ -193,7 +197,7 @@ const styles = StyleSheet.create({
     marginTop: spacing[5],
   },
   footerLink: {
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
   },

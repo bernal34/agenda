@@ -18,7 +18,8 @@ import { signOut, updatePassword } from '../../lib/auth';
 import { useAuthStore } from '../../stores/authStore';
 import { notify } from '../../lib/notify';
 import { Button, Card, Input } from '../../components/ui';
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 const schema = z
   .object({
@@ -39,6 +40,8 @@ export default function ResetPasswordScreen() {
   const [submitting, setSubmitting] = useState(false);
   const [hasSession, setHasSession] = useState(false);
   const [checking, setChecking] = useState(true);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const {
     control,
     handleSubmit,
@@ -174,7 +177,7 @@ export default function ResetPasswordScreen() {
         >
           <View style={styles.brandBlock}>
             <View style={styles.logoMark}>
-              <ShieldCheck size={22} color={tokens.brand.fg} strokeWidth={2.4} />
+              <ShieldCheck size={22} color={t.brand.fg} strokeWidth={2.4} />
             </View>
             <Text style={styles.brandName}>Mi Agenda</Text>
             <Text style={styles.brandTagline}>Restablecer contraseña</Text>
@@ -189,8 +192,8 @@ export default function ResetPasswordScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg.app },
   scroll: {
     flexGrow: 1,
     justifyContent: 'center',
@@ -201,11 +204,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   brandBlock: { alignItems: 'center', marginBottom: spacing[6] },
+  // Superficie de marca: púrpura en los dos esquemas, con el ícono en claro.
   logoMark: {
     width: 48,
     height: 48,
     borderRadius: radius.lg,
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     alignItems: 'center',
     justifyContent: 'center',
     ...shadow.md,
@@ -214,24 +218,24 @@ const styles = StyleSheet.create({
   brandName: {
     fontSize: typography.size['2xl'],
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.5,
   },
   brandTagline: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[1],
   },
   formCard: { width: '100%' },
   title: {
     fontSize: typography.size.xl,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.3,
   },
   subtitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     marginTop: spacing[1],
   },
   form: { marginTop: spacing[5], gap: spacing[3] },
