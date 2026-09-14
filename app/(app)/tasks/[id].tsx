@@ -23,6 +23,7 @@ import { TaskSubtasks } from '../../../components/tasks/TaskSubtasks';
 import { useMySnooze, useSnoozeTask } from '../../../lib/queries/assignees';
 import {
   Button,
+  Collapsible,
   DateField,
   EmptyState,
   Input,
@@ -73,6 +74,25 @@ const RECURRENCE_OPTIONS: { value: RecurrenceFreq | 'none'; label: string }[] = 
   { value: 'monthly', label: 'Mensual' },
 ];
 
+const LEAD_TIME_OPTIONS = [
+  { value: 0,  label: 'En el momento' },
+  { value: 5,  label: '5 min antes' },
+  { value: 15, label: '15 min antes' },
+  { value: 30, label: '30 min antes' },
+  { value: 60, label: '1 h antes' },
+];
+
+/** Rango de fechas en una línea, para el resumen de arriba. */
+function dateSummary(startDate: string, dueDate: string, startTime: string): string {
+  const short = (dmy: string) => dmy.slice(0, 5); // DD/MM
+  let base: string;
+  if (startDate && dueDate && startDate !== dueDate) base = `${short(startDate)} – ${short(dueDate)}`;
+  else if (dueDate) base = short(dueDate);
+  else if (startDate) base = short(startDate);
+  else return 'Sin fecha';
+  return startTime ? `${base} · ${startTime}` : base;
+}
+
 export default function EditTaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
@@ -98,6 +118,8 @@ export default function EditTaskScreen() {
   const [recFreq, setRecFreq] = useState<RecurrenceFreq | 'none'>('none');
   const [recInterval, setRecInterval] = useState('1');
   const [dirty, setDirty] = useState(false);
+  // La fila de metadatos abre este bloque: tocar un valor lleva a su editor.
+  const [detailsOpen, setDetailsOpen] = useState(false);
 
   const stagesQ = useBoardStages(task?.area_id);
   const priorities = priorityOptions(t);
@@ -251,6 +273,16 @@ export default function EditTaskScreen() {
   }
 
   const bump = () => setDirty(true);
+  const openDetails = () => setDetailsOpen(true);
+
+  const stage = (stagesQ.data ?? []).find((s) => s.code === status);
+  const prio = priorities.find((p) => p.value === priority);
+  const snoozeActive = snoozeQ.data && new Date(snoozeQ.data) > new Date();
+
+  const recurrenceSummary =
+    recFreq === 'none'
+      ? snoozeActive ? 'Pospuesta' : 'No se repite'
+      : RECURRENCE_OPTIONS.find((o) => o.value === recFreq)?.label ?? '';
 
   return (
     <ModalScreen onClose={close} maxWidth={760}>
@@ -274,6 +306,7 @@ export default function EditTaskScreen() {
         />
 
         <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+          {/* --- Lo que se mira en dos segundos --- */}
           <TextInput
             style={styles.titleInput}
             value={title}
@@ -282,125 +315,61 @@ export default function EditTaskScreen() {
             placeholderTextColor={t.text.muted}
           />
 
-          <View>
-            <Text style={styles.label}>Descripción</Text>
-            <TextInput
-              style={styles.textArea}
-              value={description}
-              onChangeText={(v) => { setDescription(v); bump(); }}
-              placeholder="Detalles, contexto, links..."
-              placeholderTextColor={t.text.muted}
-              multiline
-              textAlignVertical="top"
-            />
+          {/* Fila de metadatos: resume estado, prioridad, fechas y progreso.
+              Tocar cualquiera abre el bloque de detalles con su editor. */}
+          <View style={styles.metaRow}>
+            <Pressable onPress={openDetails} style={styles.metaChip}>
+              <View style={[styles.dot, { backgroundColor: stage?.color ?? t.text.muted }]} />
+              <Text style={styles.metaChipText}>{stage?.label ?? status}</Text>
+            </Pressable>
+            <Pressable onPress={openDetails} style={styles.metaChip}>
+              <View style={[styles.dot, { backgroundColor: prio?.color ?? t.text.muted }]} />
+              <Text style={styles.metaChipText}>{prio?.label ?? priority}</Text>
+            </Pressable>
+            <Pressable onPress={openDetails} style={styles.metaChip}>
+              <Text style={styles.metaChipText}>{dateSummary(startDate, dueDate, startTime)}</Text>
+            </Pressable>
+            <Pressable onPress={openDetails} style={styles.metaChip}>
+              <Text style={styles.metaChipText}>{progress}%</Text>
+            </Pressable>
           </View>
 
-          <View style={styles.section}>
-            <SectionHeader title="Estado" />
-            <View style={styles.optionsRow}>
-              {(stagesQ.data ?? []).map((opt) => {
-                const active = status === opt.code;
-                return (
-                  <Pressable
-                    key={opt.code}
-                    onPress={() => { setStatus(opt.code); bump(); }}
-                    style={[
-                      styles.option,
-                      active && { backgroundColor: opt.color + '22', borderColor: opt.color },
-                    ]}
-                  >
-                    <View style={[styles.dot, { backgroundColor: opt.color }]} />
-                    <Text
-                      style={[
-                        styles.optionText,
-                        active && { color: opt.color, fontWeight: typography.weight.semibold as '600' },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <SectionHeader title="Prioridad" />
-            <View style={styles.optionsRow}>
-              {priorities.map((opt) => {
-                const active = priority === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => { setPriority(opt.value); bump(); }}
-                    style={[
-                      styles.option,
-                      active && { backgroundColor: opt.color + '22', borderColor: opt.color },
-                    ]}
-                  >
-                    <View style={[styles.dot, { backgroundColor: opt.color }]} />
-                    <Text
-                      style={[
-                        styles.optionText,
-                        active && { color: opt.color, fontWeight: typography.weight.semibold as '600' },
-                      ]}
-                    >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-
-          <DateField
-            label="Fecha de inicio"
-            value={startDate}
-            onChange={(v) => { setStartDate(v); bump(); }}
+          <TextInput
+            style={styles.textArea}
+            value={description}
+            onChangeText={(v) => { setDescription(v); bump(); }}
+            placeholder="Detalles, contexto, links..."
+            placeholderTextColor={t.text.muted}
+            multiline
+            textAlignVertical="top"
           />
 
-          <DateField
-            label="Fecha final"
-            value={dueDate}
-            onChange={(v) => { setDueDate(v); bump(); }}
-          />
-
-          <Input
-            label="Hora de inicio (opcional)"
-            icon={ClockIcon}
-            value={startTime}
-            onChangeText={(v) => { setStartTime(v); bump(); }}
-            placeholder="HH:MM"
-            autoCapitalize="none"
-            autoCorrect={false}
-            keyboardType="numbers-and-punctuation"
-          />
-
-          {startTime !== '' && (
+          {/* --- Lo que se configura una vez: plegado --- */}
+          <Collapsible
+            title="Detalles"
+            open={detailsOpen}
+            onToggle={setDetailsOpen}
+            summary={`${stage?.label ?? status} · ${dateSummary(startDate, dueDate, startTime)}`}
+          >
             <View style={styles.section}>
-              <SectionHeader title="Avisarme" />
+              <SectionHeader title="Estado" />
               <View style={styles.optionsRow}>
-                {[
-                  { value: 0,  label: 'En el momento' },
-                  { value: 5,  label: '5 min antes' },
-                  { value: 15, label: '15 min antes' },
-                  { value: 30, label: '30 min antes' },
-                  { value: 60, label: '1 h antes' },
-                ].map((opt) => {
-                  const active = leadTime === opt.value;
+                {(stagesQ.data ?? []).map((opt) => {
+                  const active = status === opt.code;
                   return (
                     <Pressable
-                      key={opt.value}
-                      onPress={() => { setLeadTime(opt.value); bump(); }}
-                      style={[styles.option, active && styles.optionActiveBrand]}
+                      key={opt.code}
+                      onPress={() => { setStatus(opt.code); bump(); }}
+                      style={[
+                        styles.option,
+                        active && { backgroundColor: opt.color + '22', borderColor: opt.color },
+                      ]}
                     >
+                      <View style={[styles.dot, { backgroundColor: opt.color }]} />
                       <Text
                         style={[
                           styles.optionText,
-                          active && {
-                            color: t.brand[600],
-                            fontWeight: typography.weight.semibold as '600',
-                          },
+                          active && { color: opt.color, fontWeight: typography.weight.semibold as '600' },
                         ]}
                       >
                         {opt.label}
@@ -410,81 +379,168 @@ export default function EditTaskScreen() {
                 })}
               </View>
             </View>
-          )}
 
-          <View style={styles.section}>
-            <SectionHeader title="Recurrencia" />
-            <View style={styles.optionsRow}>
-              {RECURRENCE_OPTIONS.map((opt) => {
-                const active = recFreq === opt.value;
-                return (
-                  <Pressable
-                    key={opt.value}
-                    onPress={() => { setRecFreq(opt.value); bump(); }}
-                    style={[styles.option, active && styles.optionActiveBrand]}
-                  >
-                    <Text
+            <View style={styles.section}>
+              <SectionHeader title="Prioridad" />
+              <View style={styles.optionsRow}>
+                {priorities.map((opt) => {
+                  const active = priority === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => { setPriority(opt.value); bump(); }}
                       style={[
-                        styles.optionText,
-                        active && { color: t.brand[700], fontWeight: typography.weight.semibold as '600' },
+                        styles.option,
+                        active && { backgroundColor: opt.color + '22', borderColor: opt.color },
                       ]}
                     >
-                      {opt.label}
-                    </Text>
-                  </Pressable>
-                );
-              })}
+                      <View style={[styles.dot, { backgroundColor: opt.color }]} />
+                      <Text
+                        style={[
+                          styles.optionText,
+                          active && { color: opt.color, fontWeight: typography.weight.semibold as '600' },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-            {recFreq !== 'none' && (
-              <View style={styles.recIntervalRow}>
-                <Text style={styles.recIntervalLabel}>Cada</Text>
-                <TextInput
-                  style={styles.recIntervalInput}
-                  value={recInterval}
-                  onChangeText={(v) => { setRecInterval(v.replace(/[^0-9]/g, '')); bump(); }}
-                  keyboardType="number-pad"
-                  maxLength={3}
-                />
-                <Text style={styles.recIntervalLabel}>
-                  {recFreq === 'daily' ? 'día(s)' : recFreq === 'weekly' ? 'semana(s)' : 'mes(es)'}
-                </Text>
-                <Text style={styles.recHint}>
-                  Se crea una nueva instancia al marcarla como hecha.
-                </Text>
+
+            <DateField
+              label="Fecha de inicio"
+              value={startDate}
+              onChange={(v) => { setStartDate(v); bump(); }}
+            />
+
+            <DateField
+              label="Fecha final"
+              value={dueDate}
+              onChange={(v) => { setDueDate(v); bump(); }}
+            />
+
+            <Input
+              label="Hora de inicio (opcional)"
+              icon={ClockIcon}
+              value={startTime}
+              onChangeText={(v) => { setStartTime(v); bump(); }}
+              placeholder="HH:MM"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="numbers-and-punctuation"
+            />
+
+            {startTime !== '' && (
+              <View style={styles.section}>
+                <SectionHeader title="Avisarme" />
+                <View style={styles.optionsRow}>
+                  {LEAD_TIME_OPTIONS.map((opt) => {
+                    const active = leadTime === opt.value;
+                    return (
+                      <Pressable
+                        key={opt.value}
+                        onPress={() => { setLeadTime(opt.value); bump(); }}
+                        style={[styles.option, active && styles.optionActiveBrand]}
+                      >
+                        <Text
+                          style={[
+                            styles.optionText,
+                            active && {
+                              color: t.brand[600],
+                              fontWeight: typography.weight.semibold as '600',
+                            },
+                          ]}
+                        >
+                          {opt.label}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
               </View>
             )}
-          </View>
 
-          <SnoozeSection
-            value={snoozeQ.data ?? null}
-            pending={snoozeMut.isPending}
-            onPick={handleSnooze}
-          />
-
-          <View style={styles.section}>
-            <SectionHeader title={`Progreso · ${progress}%`} />
-            <View style={styles.progressRow}>
-              {PROGRESS_STEPS.map((p) => {
-                const active = progress === p;
-                return (
-                  <Pressable
-                    key={p}
-                    onPress={() => { setProgress(p); bump(); }}
-                    style={[styles.progBtn, active && styles.progBtnActive]}
-                  >
-                    <Text style={[styles.progBtnText, active && styles.progBtnTextActive]}>
-                      {p}%
-                    </Text>
-                  </Pressable>
-                );
-              })}
+            <View style={styles.section}>
+              <SectionHeader title={`Progreso · ${progress}%`} />
+              <View style={styles.progressRow}>
+                {PROGRESS_STEPS.map((p) => {
+                  const active = progress === p;
+                  return (
+                    <Pressable
+                      key={p}
+                      onPress={() => { setProgress(p); bump(); }}
+                      style={[styles.progBtn, active && styles.progBtnActive]}
+                    >
+                      <Text style={[styles.progBtnText, active && styles.progBtnTextActive]}>
+                        {p}%
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
             </View>
-          </View>
+          </Collapsible>
 
+          <Collapsible title="Repetición y avisos" summary={recurrenceSummary}>
+            <View style={styles.section}>
+              <SectionHeader title="Recurrencia" />
+              <View style={styles.optionsRow}>
+                {RECURRENCE_OPTIONS.map((opt) => {
+                  const active = recFreq === opt.value;
+                  return (
+                    <Pressable
+                      key={opt.value}
+                      onPress={() => { setRecFreq(opt.value); bump(); }}
+                      style={[styles.option, active && styles.optionActiveBrand]}
+                    >
+                      <Text
+                        style={[
+                          styles.optionText,
+                          active && { color: t.brand[700], fontWeight: typography.weight.semibold as '600' },
+                        ]}
+                      >
+                        {opt.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+              {recFreq !== 'none' && (
+                <View style={styles.recIntervalRow}>
+                  <Text style={styles.recIntervalLabel}>Cada</Text>
+                  <TextInput
+                    style={styles.recIntervalInput}
+                    value={recInterval}
+                    onChangeText={(v) => { setRecInterval(v.replace(/[^0-9]/g, '')); bump(); }}
+                    keyboardType="number-pad"
+                    maxLength={3}
+                  />
+                  <Text style={styles.recIntervalLabel}>
+                    {recFreq === 'daily' ? 'día(s)' : recFreq === 'weekly' ? 'semana(s)' : 'mes(es)'}
+                  </Text>
+                  <Text style={styles.recHint}>
+                    Se crea una nueva instancia al marcarla como hecha.
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            <SnoozeSection
+              value={snoozeQ.data ?? null}
+              pending={snoozeMut.isPending}
+              onPick={handleSnooze}
+            />
+          </Collapsible>
+
+          {/* --- Quién y qué: contexto de la tarea --- */}
           <TaskAssignees taskId={task.id} areaId={task.area_id} currentUserId={userId} />
           <TaskLabels taskId={task.id} areaId={task.area_id} />
           <TaskCustomFields taskId={task.id} areaId={task.area_id} />
           <TaskDependencies taskId={task.id} areaId={task.area_id} />
+
+          {/* --- El trabajo real, con peso propio --- */}
           <TaskSubtasks taskId={task.id} />
           <TaskAttachments taskId={task.id} />
           <TaskComments taskId={task.id} areaId={task.area_id} userId={userId} />
@@ -580,19 +636,32 @@ const makeStyles = (t: Tokens) => StyleSheet.create({
     color: t.text.primary,
     letterSpacing: -0.4,
     paddingVertical: spacing[1],
-    borderBottomWidth: 1,
-    borderBottomColor: t.border.subtle,
-    marginBottom: spacing[2],
   },
 
-  label: {
-    fontSize: typography.size.sm,
-    fontWeight: typography.weight.medium as '500',
-    color: t.text.primary,
+  // Fila de metadatos: chips de solo lectura que abren el editor.
+  metaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing[2],
     marginBottom: spacing[1],
   },
+  metaChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing[2],
+    paddingVertical: 5,
+    borderRadius: radius.full,
+    backgroundColor: t.bg.subtle,
+  },
+  metaChipText: {
+    fontSize: typography.size.xs,
+    color: t.text.secondary,
+    fontWeight: typography.weight.medium as '500',
+  },
+
   textArea: {
-    height: 90,
+    minHeight: 72,
     borderWidth: 1,
     borderColor: t.border.strong,
     borderRadius: radius.md,
@@ -601,6 +670,7 @@ const makeStyles = (t: Tokens) => StyleSheet.create({
     fontSize: typography.size.base,
     color: t.text.primary,
     backgroundColor: t.bg.surface,
+    marginBottom: spacing[2],
   },
 
   section: { gap: spacing[1] },
