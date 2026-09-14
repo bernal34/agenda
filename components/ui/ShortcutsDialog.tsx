@@ -1,7 +1,8 @@
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { X, Keyboard } from 'lucide-react-native';
 
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 export interface ShortcutItem {
   combo: string;
@@ -25,6 +26,9 @@ function formatKey(combo: string): string[] {
 }
 
 export function ShortcutsDialog({ visible, onClose, shortcuts }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+
   return (
     <Modal
       visible={visible}
@@ -36,11 +40,11 @@ export function ShortcutsDialog({ visible, onClose, shortcuts }: Props) {
         <Pressable style={styles.card} onPress={() => {}}>
           <View style={styles.header}>
             <View style={styles.titleRow}>
-              <Keyboard size={16} color={tokens.brand[600]} strokeWidth={2.2} />
+              <Keyboard size={16} color={t.brand[600]} strokeWidth={2.2} />
               <Text style={styles.title}>Atajos de teclado</Text>
             </View>
             <Pressable onPress={onClose} hitSlop={8}>
-              <X size={16} color={tokens.text.muted} strokeWidth={2} />
+              <X size={16} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
 
@@ -66,7 +70,8 @@ export function ShortcutsDialog({ visible, onClose, shortcuts }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  // El velo se queda fijo: oscurece lo que haya detrás en los dos esquemas.
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.5)',
@@ -77,7 +82,7 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: 440,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     padding: spacing[5],
     ...shadow.md,
@@ -92,7 +97,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.2,
   },
 
@@ -102,11 +107,11 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
   },
   desc: {
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
     flex: 1,
   },
   keysRow: { flexDirection: 'row', gap: 4 },
@@ -114,28 +119,25 @@ const styles = StyleSheet.create({
     minWidth: 28,
     height: 24,
     borderRadius: 6,
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     borderWidth: 1,
-    borderColor: tokens.border.default,
+    borderColor: t.border.default,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 6,
   },
   keyText: {
     fontSize: typography.size.xs,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.semibold as '600',
     fontVariant: ['tabular-nums'],
   },
 
   hint: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: spacing[3],
     textAlign: 'center',
     fontStyle: 'italic',
   },
-
-  // unused, keeps palette imported
-  _accent: { color: palette.brand[600] },
 });

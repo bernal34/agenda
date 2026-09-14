@@ -1,6 +1,7 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
-import { palette, tokens, typography } from '../../constants/theme';
+import { typography, type Tokens } from '../../constants/theme';
+import { useThemedStyles } from '../../lib/theme';
 
 type Size = 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 
@@ -25,6 +26,7 @@ function initialsOf(name?: string | null) {
 }
 
 export function Avatar({ name, uri, size = 'md' }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const s = SIZE[size];
   const initials = initialsOf(name);
   return (
@@ -38,17 +40,19 @@ export function Avatar({ name, uri, size = 'md' }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+// El avatar es superficie de marca: se mantiene púrpura en los dos esquemas,
+// con las iniciales siempre en claro.
+const makeStyles = (t: Tokens) => StyleSheet.create({
   box: {
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.brand[700],
+    borderColor: t.brand[700],
     overflow: 'hidden',
   },
   initials: {
-    color: tokens.brand.fg,
+    color: t.brand.fg,
     fontWeight: typography.weight.semibold as '600',
   },
 });

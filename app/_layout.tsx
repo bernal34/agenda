@@ -8,7 +8,6 @@ import { ActivityIndicator, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { useAuthStore } from '../stores/authStore';
 import { ThemeProvider, useTheme } from '../lib/theme';
-import { tokens } from '../constants/theme';
 // SSO from the portal now uses Supabase magic-link redirects (hash tokens),
 // which detectSessionInUrl=true on the supabase client consumes automatically.
 // No manual handler needed.
@@ -39,16 +38,32 @@ function useProtectedRoute() {
   }, [status, segments, router, recoveryMode]);
 }
 
+/**
+ * Pantalla de arranque. Lleva fondo propio a propósito: sin él, el primer
+ * frame en modo oscuro salía blanco.
+ */
+function BootSplash() {
+  const { t } = useTheme();
+  return (
+    <View
+      style={{
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: t.bg.app,
+      }}
+    >
+      <ActivityIndicator size="large" color={t.brand[600]} />
+    </View>
+  );
+}
+
 function RootLayoutNav() {
   useProtectedRoute();
   const status = useAuthStore((s) => s.status);
 
   if (status === 'loading') {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={tokens.brand[600]} />
-      </View>
-    );
+    return <BootSplash />;
   }
 
   return (
@@ -80,20 +95,15 @@ export default function RootLayout() {
     return () => sub.subscription.unsubscribe();
   }, [setSession, setRecoveryMode]);
 
-  if (!hydrated) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color={tokens.brand[600]} />
-      </View>
-    );
-  }
-
+  // `ThemeProvider` se monta siempre, incluso sin hidratar: antes la espera de
+  // sesión devolvía temprano y quedaba fuera del provider, así que la pantalla
+  // de carga no tenía forma de conocer el esquema.
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider>
         <QueryClientProvider client={queryClient}>
           <ThemedStatusBar />
-          <RootLayoutNav />
+          {hydrated ? <RootLayoutNav /> : <BootSplash />}
         </QueryClientProvider>
       </ThemeProvider>
     </GestureHandlerRootView>
