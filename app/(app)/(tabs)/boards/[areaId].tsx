@@ -36,12 +36,16 @@ import {
   radius,
   shadow,
   spacing,
-  tokens,
   typography,
+  type Tokens,
 } from '../../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../../lib/theme';
 import { confirmAction, notify } from '../../../../lib/notify';
 
 const COLUMN_WIDTH = Math.min(300, Dimensions.get('window').width * 0.82);
+
+// Paleta de elección para etapas: son datos que se guardan en `board_stages`,
+// no colores del tema, así que no cambian con el esquema.
 const STAGE_COLORS = [
   palette.slate[500],
   palette.amber[500],
@@ -60,6 +64,8 @@ export default function KanbanBoard() {
   const { areaId } = useLocalSearchParams<{ areaId: string }>();
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
 
   const areasQ = useMyAreas(userId);
   const stagesQ = useBoardStages(areaId);
@@ -84,16 +90,16 @@ export default function KanbanBoard() {
   const grouped: Record<string, MyTask[]> = useMemo(() => {
     const g: Record<string, MyTask[]> = {};
     stages.forEach((s) => { g[s.code] = []; });
-    (tasksQ.data ?? []).forEach((t) => {
-      if (g[t.status]) g[t.status].push(t);
-      else g[t.status] = [t];
+    (tasksQ.data ?? []).forEach((task) => {
+      if (g[task.status]) g[task.status].push(task);
+      else g[task.status] = [task];
     });
     return g;
   }, [tasksQ.data, stages]);
 
   const tasksById = useMemo(() => {
     const m = new Map<string, MyTask>();
-    (tasksQ.data ?? []).forEach((t) => m.set(t.id, t));
+    (tasksQ.data ?? []).forEach((task) => m.set(task.id, task));
     return m;
   }, [tasksQ.data]);
 
@@ -217,10 +223,10 @@ export default function KanbanBoard() {
     return null;
   };
 
-  const handleDragStart = (t: MyTask, bounds: { x: number; y: number; w: number; h: number }) => {
+  const handleDragStart = (task: MyTask, bounds: { x: number; y: number; w: number; h: number }) => {
     dragX.value = bounds.x + bounds.w / 2;
     dragY.value = bounds.y + 30;
-    setPreview({ task: t, width: bounds.w, startX: bounds.x, startY: bounds.y });
+    setPreview({ task, width: bounds.w, startX: bounds.x, startY: bounds.y });
   };
 
   const handleDragMove = (absX: number, absY: number) => {
@@ -285,7 +291,7 @@ export default function KanbanBoard() {
         right={
           selectionMode ? (
             <Pressable onPress={exitSelection} hitSlop={6} style={styles.membersBtn}>
-              <X size={14} color={tokens.text.secondary} strokeWidth={2} />
+              <X size={14} color={t.text.secondary} strokeWidth={2} />
               <Text style={styles.membersBtnText}>Cancelar</Text>
             </Pressable>
           ) : (
@@ -297,7 +303,7 @@ export default function KanbanBoard() {
                 hitSlop={6}
                 style={({ pressed }) => [styles.membersBtn, pressed && styles.membersBtnPressed]}
               >
-                <CheckSquare size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                <CheckSquare size={14} color={t.brand[600]} strokeWidth={2.2} />
                 <Text style={styles.membersBtnText}>Seleccionar</Text>
               </Pressable>
               <OverflowMenu
@@ -387,9 +393,9 @@ export default function KanbanBoard() {
               onDragStart={handleDragStart}
               onDragMove={handleDragMove}
               onDragEnd={handleDrop}
-              onTaskOpen={(t) => {
-                if (selectionMode) toggleSelected(t.id);
-                else router.push(`/tasks/${t.id}` as never);
+              onTaskOpen={(task) => {
+                if (selectionMode) toggleSelected(task.id);
+                else router.push(`/tasks/${task.id}` as never);
               }}
               selectionMode={selectionMode}
               selectedIds={selectedIds}
@@ -404,7 +410,7 @@ export default function KanbanBoard() {
                 onPress={() => setShowAddStage(true)}
                 style={({ pressed }) => [styles.addStageBtn, pressed && styles.addStageBtnPressed]}
               >
-                <Plus size={16} color={tokens.brand[600]} strokeWidth={2.2} />
+                <Plus size={16} color={t.brand[600]} strokeWidth={2.2} />
                 <Text style={styles.addStageBtnText}>Agregar etapa</Text>
               </Pressable>
             ) : (
@@ -415,7 +421,7 @@ export default function KanbanBoard() {
                     onPress={() => { setShowAddStage(false); setNewStageLabel(''); }}
                     hitSlop={6}
                   >
-                    <X size={14} color={tokens.text.muted} strokeWidth={2} />
+                    <X size={14} color={t.text.muted} strokeWidth={2} />
                   </Pressable>
                 </View>
                 <TextInput
@@ -423,7 +429,7 @@ export default function KanbanBoard() {
                   value={newStageLabel}
                   onChangeText={setNewStageLabel}
                   placeholder="Ej: Bloqueada"
-                  placeholderTextColor={tokens.text.muted}
+                  placeholderTextColor={t.text.muted}
                   autoFocus
                   onSubmitEditing={handleAddStage}
                 />
@@ -476,7 +482,7 @@ export default function KanbanBoard() {
                 </Pressable>
               ))}
               <Pressable onPress={() => setMoveMenuOpen(false)} hitSlop={6} style={styles.bulkChip}>
-                <X size={12} color={tokens.text.muted} strokeWidth={2} />
+                <X size={12} color={t.text.muted} strokeWidth={2} />
               </Pressable>
             </ScrollView>
           ) : (
@@ -486,7 +492,7 @@ export default function KanbanBoard() {
                 disabled={bulkPending || selectedIds.size === 0}
                 style={({ pressed }) => [styles.bulkAction, pressed && styles.bulkActionPressed]}
               >
-                <ArrowRight size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                <ArrowRight size={14} color={t.brand[600]} strokeWidth={2.2} />
                 <Text style={styles.bulkActionText}>Mover</Text>
               </Pressable>
               <Pressable
@@ -494,7 +500,7 @@ export default function KanbanBoard() {
                 disabled={bulkPending || selectedIds.size === 0}
                 style={({ pressed }) => [styles.bulkAction, pressed && styles.bulkActionPressed]}
               >
-                <Archive size={14} color={palette.amber[700]} strokeWidth={2.2} />
+                <Archive size={14} color={t.feedback.warningFg} strokeWidth={2.2} />
                 <Text style={styles.bulkActionText}>Archivar</Text>
               </Pressable>
               <Pressable
@@ -502,8 +508,8 @@ export default function KanbanBoard() {
                 disabled={bulkPending || selectedIds.size === 0}
                 style={({ pressed }) => [styles.bulkAction, pressed && styles.bulkActionPressed]}
               >
-                <Trash2 size={14} color={palette.red[600]} strokeWidth={2.2} />
-                <Text style={[styles.bulkActionText, { color: palette.red[600] }]}>Eliminar</Text>
+                <Trash2 size={14} color={t.feedback.errorFg} strokeWidth={2.2} />
+                <Text style={[styles.bulkActionText, { color: t.feedback.errorFg }]}>Eliminar</Text>
               </Pressable>
             </>
           )}
@@ -569,6 +575,8 @@ function DraggableStageColumn({
   selectedIds,
   onAddTask,
 }: ColumnProps) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { gesture, animatedStyle } = useColumnDrag({ index, stride, total, onReorder });
   const [editValue, setEditValue] = useState(stage.label);
 
@@ -586,7 +594,7 @@ function DraggableStageColumn({
       <View style={styles.columnHeader}>
         <GestureDetector gesture={gesture}>
           <View style={styles.dragHandle}>
-            <GripVertical size={14} color={tokens.text.muted} strokeWidth={2} />
+            <GripVertical size={14} color={t.text.muted} strokeWidth={2} />
           </View>
         </GestureDetector>
         <View style={[styles.statusDot, { backgroundColor: stage.color }]} />
@@ -608,7 +616,7 @@ function DraggableStageColumn({
         <Text style={styles.columnCount}>{tasks.length}</Text>
         {isEditing && (
           <Pressable onPress={onDelete} hitSlop={6}>
-            <Trash2 size={12} color={palette.red[600]} strokeWidth={2} />
+            <Trash2 size={12} color={t.feedback.errorFg} strokeWidth={2} />
           </Pressable>
         )}
       </View>
@@ -617,16 +625,16 @@ function DraggableStageColumn({
         {tasks.length === 0 ? (
           <Text style={styles.columnEmpty}>—</Text>
         ) : (
-          tasks.map((t) => (
+          tasks.map((task) => (
             <DraggableTaskCard
-              key={t.id}
-              task={t}
-              onPress={() => onTaskOpen(t)}
+              key={task.id}
+              task={task}
+              onPress={() => onTaskOpen(task)}
               onDragStart={onDragStart}
               onDragMove={onDragMove}
               onDragEnd={onDragEnd}
               selectable={selectionMode}
-              selected={selectedIds.has(t.id)}
+              selected={selectedIds.has(task.id)}
             />
           ))
         )}
@@ -634,7 +642,7 @@ function DraggableStageColumn({
           onPress={onAddTask}
           style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
         >
-          <Plus size={14} color={tokens.text.secondary} strokeWidth={2.2} />
+          <Plus size={14} color={t.text.secondary} strokeWidth={2.2} />
           <Text style={styles.addBtnText}>Agregar tarea</Text>
         </Pressable>
       </View>
@@ -642,12 +650,12 @@ function DraggableStageColumn({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
 
   hint: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     textAlign: 'center',
     paddingVertical: 4,
     paddingHorizontal: spacing[3],
@@ -661,7 +669,7 @@ const styles = StyleSheet.create({
     overflow: 'visible',
   },
   column: {
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     borderRadius: radius.xl,
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[2],
@@ -669,7 +677,7 @@ const styles = StyleSheet.create({
     borderColor: 'transparent',
     overflow: 'visible',
   },
-  columnHover: { borderColor: palette.brand[500], backgroundColor: palette.brand[50] },
+  columnHover: { borderColor: t.brand[500], backgroundColor: t.brand[50] },
   columnHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -687,18 +695,18 @@ const styles = StyleSheet.create({
   columnTitle: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.1,
   },
   columnCount: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
   columnList: { paddingBottom: spacing[3], overflow: 'visible' },
   columnEmpty: {
     textAlign: 'center',
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontSize: typography.size.sm,
     paddingVertical: spacing[2],
   },
@@ -707,13 +715,13 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.sm,
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderWidth: 1,
-    borderColor: palette.brand[400],
+    borderColor: t.border.focus,
   },
 
   addBtn: {
@@ -723,22 +731,22 @@ const styles = StyleSheet.create({
     gap: 4,
     borderWidth: 1,
     borderStyle: 'dashed',
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingVertical: spacing[2],
     marginTop: spacing[1],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
-  addBtnPressed: { backgroundColor: palette.brand[50], borderColor: palette.brand[300] },
+  addBtnPressed: { backgroundColor: t.brand[50], borderColor: t.border.focus },
   addBtnText: {
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
   },
 
   addStageColumn: {
     borderStyle: 'dashed',
-    borderColor: palette.brand[300],
+    borderColor: t.brand[100],
     borderWidth: 2,
     borderRadius: radius.xl,
     backgroundColor: 'transparent',
@@ -751,9 +759,9 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: spacing[8],
   },
-  addStageBtnPressed: { backgroundColor: palette.brand[50], borderRadius: radius.lg },
+  addStageBtnPressed: { backgroundColor: t.brand[50], borderRadius: radius.lg },
   addStageBtnText: {
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
   },
@@ -767,17 +775,17 @@ const styles = StyleSheet.create({
   addStageLabel: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   addStageInput: {
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
     fontSize: typography.size.base,
-    backgroundColor: tokens.bg.surface,
-    color: tokens.text.primary,
+    backgroundColor: t.bg.surface,
+    color: t.text.primary,
   },
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: spacing[2] },
   colorDot: {
@@ -787,16 +795,16 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'transparent',
   },
-  colorDotSelected: { borderColor: tokens.text.primary },
+  colorDotSelected: { borderColor: t.text.primary },
 
   stateWrap: { paddingHorizontal: spacing[3], paddingTop: spacing[2] },
 
   errorCard: {
     marginHorizontal: spacing[3],
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 
   membersBtn: {
     flexDirection: 'row',
@@ -805,13 +813,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
     paddingVertical: 6,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: t.brand[50],
     borderWidth: 1,
-    borderColor: palette.brand[200],
+    borderColor: t.brand[100],
   },
-  membersBtnPressed: { backgroundColor: palette.brand[100] },
+  membersBtnPressed: { backgroundColor: t.brand[100] },
   membersBtnText: {
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
   },
@@ -824,9 +832,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderWidth: 1,
-    borderColor: palette.brand[200],
+    borderColor: t.brand[100],
     borderRadius: radius.lg,
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
@@ -835,11 +843,11 @@ const styles = StyleSheet.create({
   bulkCount: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.bold as '700',
-    color: palette.brand[700],
+    color: t.brand[700],
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: radius.full,
-    backgroundColor: palette.brand[50],
+    backgroundColor: t.brand[50],
     minWidth: 22,
     textAlign: 'center',
   },
@@ -851,13 +859,13 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
-    backgroundColor: tokens.bg.subtle,
+    borderColor: t.border.subtle,
+    backgroundColor: t.bg.subtle,
   },
-  bulkActionPressed: { backgroundColor: palette.brand[50], borderColor: palette.brand[200] },
+  bulkActionPressed: { backgroundColor: t.brand[50], borderColor: t.brand[100] },
   bulkActionText: {
     fontSize: typography.size.xs,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.semibold as '600',
   },
   bulkChip: {
@@ -868,12 +876,12 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.subtle,
+    backgroundColor: t.bg.surface,
   },
   bulkChipText: {
     fontSize: typography.size.xs,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.medium as '500',
   },
 });

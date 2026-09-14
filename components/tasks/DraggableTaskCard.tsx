@@ -12,7 +12,8 @@ import { Check } from 'lucide-react-native';
 
 import { TaskCard } from './TaskCard';
 import { MyTask } from '../../lib/queries/tasks';
-import { palette, radius, tokens } from '../../constants/theme';
+import { radius, type Tokens } from '../../constants/theme';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 
 interface Props {
   task: MyTask;
@@ -33,11 +34,14 @@ export function DraggableTaskCard({
   selectable,
   selected,
 }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+
   if (selectable) {
     return (
       <Pressable onPress={onPress} style={styles.selectWrap}>
         <View style={[styles.checkbox, selected && styles.checkboxOn]}>
-          {selected && <Check size={12} color="#fff" strokeWidth={3} />}
+          {selected && <Check size={12} color={t.brand.fg} strokeWidth={3} />}
         </View>
         <View style={[{ flex: 1 }, selected && styles.cardSelected]}>
           <TaskCard task={task} compact />
@@ -102,6 +106,7 @@ interface PreviewProps {
 }
 
 export function DragPreview({ task, startX, startY, width, dragX, dragY }: PreviewProps) {
+  const styles = useThemedStyles(makeStyles);
   const style = useAnimatedStyle(() => ({
     position: 'absolute',
     left: dragX.value - width / 2,
@@ -123,7 +128,7 @@ export function DragPreview({ task, startX, startY, width, dragX, dragY }: Previ
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   preview: { pointerEvents: 'none' as any },
   selectWrap: {
     flexDirection: 'row',
@@ -136,18 +141,18 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
   checkboxOn: {
-    backgroundColor: palette.brand[600],
-    borderColor: palette.brand[600],
+    backgroundColor: t.brand[600],
+    borderColor: t.brand[600],
   },
   cardSelected: {
     borderRadius: radius.lg,
     borderWidth: 2,
-    borderColor: palette.brand[400],
+    borderColor: t.border.focus,
   },
 });
