@@ -26,12 +26,12 @@ import {
 } from '../../../../lib/queries/channels';
 import { useAuthStore } from '../../../../stores/authStore';
 import {
-  palette,
   radius,
   spacing,
-  tokens,
   typography,
+  type Tokens,
 } from '../../../../constants/theme';
+import { useTheme, useThemedStyles } from '../../../../lib/theme';
 
 function formatTime(iso: string) {
   const d = new Date(iso);
@@ -45,6 +45,7 @@ function displayName(p: MemberProfile | undefined, fallback: string) {
 
 /** Burbujas fantasma: la conversación aparece con su forma, no con un spinner. */
 function MessagesSkeleton() {
+  const styles = useThemedStyles(makeStyles);
   const widths = ['62%', '45%', '70%', '38%'] as const;
   return (
     <View accessibilityLabel="Cargando mensajes">
@@ -63,6 +64,8 @@ function MessagesSkeleton() {
 export default function ChannelScreen() {
   const { channelId } = useLocalSearchParams<{ channelId: string }>();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
 
   const channelsQ = useMyChannels(userId);
   const messagesQ = useChannelMessages(channelId);
@@ -180,7 +183,7 @@ export default function ChannelScreen() {
             value={draft}
             onChangeText={setDraft}
             placeholder="Escribí un mensaje..."
-            placeholderTextColor={tokens.text.muted}
+            placeholderTextColor={t.text.muted}
             multiline
             onSubmitEditing={handleSend}
             blurOnSubmit={false}
@@ -196,9 +199,9 @@ export default function ChannelScreen() {
             ]}
           >
             {sendMut.isPending ? (
-              <ActivityIndicator color={tokens.brand.fg} size="small" />
+              <ActivityIndicator color={t.brand.fg} size="small" />
             ) : (
-              <Send size={16} color={tokens.brand.fg} strokeWidth={2.2} />
+              <Send size={16} color={t.brand.fg} strokeWidth={2.2} />
             )}
           </Pressable>
         </View>
@@ -207,8 +210,8 @@ export default function ChannelScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
 
   list: { padding: spacing[4], paddingBottom: spacing[6] },
   bubbleRow: { flexDirection: 'row', marginVertical: spacing[1] },
@@ -221,39 +224,41 @@ const styles = StyleSheet.create({
     borderRadius: radius.xl,
   },
   bubbleMine: {
-    backgroundColor: tokens.brand[600],
+    backgroundColor: t.brand[600],
     borderBottomRightRadius: radius.xs,
   },
   bubbleOther: {
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderBottomLeftRadius: radius.xs,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   bubbleAuthor: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     marginBottom: 2,
   },
   bodyMine: {
-    color: tokens.brand.fg,
+    color: t.brand.fg,
     fontSize: typography.size.base,
     lineHeight: 19,
   },
   bodyOther: {
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontSize: typography.size.base,
     lineHeight: 19,
   },
+  // La burbuja propia es superficie de marca en los dos esquemas, así que la
+  // hora va sobre ese púrpura: un tinte claro de marca, no el gris del tema.
   timeMine: {
-    color: palette.brand[200],
+    color: t.brand[100],
     fontSize: typography.size['2xs'],
     marginTop: 2,
     alignSelf: 'flex-end',
   },
   timeOther: {
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontSize: typography.size['2xs'],
     marginTop: 2,
     alignSelf: 'flex-end',
@@ -265,37 +270,37 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderTopWidth: 1,
-    borderTopColor: tokens.border.subtle,
+    borderTopColor: t.border.subtle,
   },
   composerInput: {
     flex: 1,
     minHeight: 40,
     maxHeight: 120,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.full,
     paddingHorizontal: spacing[4],
     paddingVertical: spacing[2],
     fontSize: typography.size.base,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
   sendBtn: {
-    backgroundColor: tokens.brand[600],
+    backgroundColor: t.brand[600],
     width: 40,
     height: 40,
     borderRadius: radius.full,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sendBtnDisabled: { backgroundColor: palette.brand[300] },
-  sendBtnPressed: { backgroundColor: tokens.brand[700] },
+  sendBtnDisabled: { backgroundColor: t.brand[100] },
+  sendBtnPressed: { backgroundColor: t.brand[700] },
 
   errorCard: {
-    backgroundColor: tokens.feedback.errorBg,
-    borderColor: tokens.border.default,
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.border.default,
   },
-  errorText: { color: tokens.feedback.errorFg, fontSize: typography.size.sm },
+  errorText: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 });
