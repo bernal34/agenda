@@ -13,7 +13,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { ChevronDown, ChevronRight, Play, Plus, Trash2 } from 'lucide-react-native';
 
 import { Button, Card, ScreenHeader, SectionHeader } from '../../../components/ui';
-import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../../constants/theme';
 import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useBoardStages } from '../../../lib/queries/stages';
@@ -28,19 +28,25 @@ import {
   useRemoveTemplateItem,
   useTemplateItems,
 } from '../../../lib/queries/templates';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 import { useAuthStore } from '../../../stores/authStore';
 import type { TaskPriority } from '../../../lib/taskModel';
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'low',    label: 'Baja',    color: palette.slate[400] },
-  { value: 'normal', label: 'Normal',  color: palette.sky[500] },
-  { value: 'high',   label: 'Alta',    color: palette.amber[500] },
-  { value: 'urgent', label: 'Urgente', color: palette.red[500] },
-];
+/** El color de prioridad sale del tema en render, no de un const de módulo. */
+function priorityOptions(t: Tokens): { value: TaskPriority; label: string; color: string }[] {
+  return [
+    { value: 'low',    label: 'Baja',    color: t.text.muted },
+    { value: 'normal', label: 'Normal',  color: t.status.review },
+    { value: 'high',   label: 'Alta',    color: t.status.progress },
+    { value: 'urgent', label: 'Urgente', color: t.status.urgent },
+  ];
+}
 
 export default function AreaTemplatesScreen() {
   const { areaId } = useLocalSearchParams<{ areaId: string }>();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const areasQ = useMyAreas(userId);
   const area = areasQ.data?.find((a) => a.id === areaId);
 
@@ -60,27 +66,27 @@ export default function AreaTemplatesScreen() {
   const handleCreate = async () => {
     if (newName.trim().length < 2) { notify('Nombre inválido', 'Mínimo 2 caracteres'); return; }
     try {
-      const t = await createMut.mutateAsync({ name: newName, description: newDesc });
+      const tpl = await createMut.mutateAsync({ name: newName, description: newDesc });
       setNewName(''); setNewDesc(''); setShowNew(false);
-      setExpanded(t.id);
+      setExpanded(tpl.id);
     } catch (err) { notify('No se pudo crear', err instanceof Error ? err.message : 'Error'); }
   };
 
-  const handleDelete = async (t: TaskTemplate) => {
-    if (!(await confirmAction(`¿Eliminar la plantilla "${t.name}"?`, undefined, 'Eliminar'))) return;
-    try { await deleteMut.mutateAsync(t.id); }
+  const handleDelete = async (tpl: TaskTemplate) => {
+    if (!(await confirmAction(`¿Eliminar la plantilla "${tpl.name}"?`, undefined, 'Eliminar'))) return;
+    try { await deleteMut.mutateAsync(tpl.id); }
     catch (err) { notify('No se pudo eliminar', err instanceof Error ? err.message : 'Error'); }
   };
 
-  const handleApply = async (t: TaskTemplate) => {
+  const handleApply = async (tpl: TaskTemplate) => {
     const confirmed = await confirmAction(
-      `¿Aplicar "${t.name}"?`,
+      `¿Aplicar "${tpl.name}"?`,
       'Se crearán todos los items de la plantilla como tareas nuevas.',
       'Aplicar',
     );
     if (!confirmed) return;
     try {
-      const n = await applyMut.mutateAsync({ templateId: t.id, initialStatus: firstStage });
+      const n = await applyMut.mutateAsync({ templateId: tpl.id, initialStatus: firstStage });
       notify('Plantilla aplicada', `Se crearon ${n} tarea(s)`);
     } catch (err) { notify('No se pudo aplicar', err instanceof Error ? err.message : 'Error'); }
   };
@@ -95,7 +101,7 @@ export default function AreaTemplatesScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {templatesQ.isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {templatesQ.isLoading && <ActivityIndicator color={t.brand[600]} style={{ marginTop: 24 }} />}
         {templatesQ.error && (
           <Text style={styles.error}>
             {templatesQ.error instanceof Error ? templatesQ.error.message : 'Error cargando plantillas'}
@@ -106,40 +112,40 @@ export default function AreaTemplatesScreen() {
           <Text style={styles.empty}>Sin plantillas todavía. Creá una con el botón de abajo.</Text>
         )}
 
-        {templatesQ.data?.map((t) => (
-          <Card key={t.id} padding="md" style={{ gap: spacing[2] }}>
+        {templatesQ.data?.map((tpl) => (
+          <Card key={tpl.id} padding="md" style={{ gap: spacing[2] }}>
             <Pressable
-              onPress={() => setExpanded(expanded === t.id ? null : t.id)}
+              onPress={() => setExpanded(expanded === tpl.id ? null : tpl.id)}
               style={styles.tplHeader}
             >
-              {expanded === t.id ? (
-                <ChevronDown size={14} color={tokens.text.muted} strokeWidth={2} />
+              {expanded === tpl.id ? (
+                <ChevronDown size={14} color={t.text.muted} strokeWidth={2} />
               ) : (
-                <ChevronRight size={14} color={tokens.text.muted} strokeWidth={2} />
+                <ChevronRight size={14} color={t.text.muted} strokeWidth={2} />
               )}
               <View style={{ flex: 1 }}>
-                <Text style={styles.tplName}>{t.name}</Text>
-                {t.description && <Text style={styles.tplDesc} numberOfLines={2}>{t.description}</Text>}
+                <Text style={styles.tplName}>{tpl.name}</Text>
+                {tpl.description && <Text style={styles.tplDesc} numberOfLines={2}>{tpl.description}</Text>}
               </View>
               <Pressable
-                onPress={() => handleApply(t)}
+                onPress={() => handleApply(tpl)}
                 disabled={applyMut.isPending}
                 style={({ pressed }) => [styles.applyBtn, pressed && styles.applyBtnPressed]}
                 hitSlop={6}
               >
-                <Play size={12} color={tokens.brand.fg} strokeWidth={2.4} />
+                <Play size={12} color={t.brand.fg} strokeWidth={2.4} />
                 <Text style={styles.applyBtnText}>Aplicar</Text>
               </Pressable>
               <Pressable
-                onPress={() => handleDelete(t)}
+                onPress={() => handleDelete(tpl)}
                 disabled={deleteMut.isPending}
                 hitSlop={6}
                 style={styles.deleteBtn}
               >
-                <Trash2 size={14} color={palette.red[600]} strokeWidth={2} />
+                <Trash2 size={14} color={t.feedback.errorFg} strokeWidth={2} />
               </Pressable>
             </Pressable>
-            {expanded === t.id && <TemplateItems templateId={t.id} />}
+            {expanded === tpl.id && <TemplateItems templateId={tpl.id} />}
           </Card>
         ))}
 
@@ -151,14 +157,14 @@ export default function AreaTemplatesScreen() {
               value={newName}
               onChangeText={setNewName}
               placeholder="Nombre (ej: Onboarding cliente)"
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
             />
             <TextInput
               style={[styles.input, { height: 70 }]}
               value={newDesc}
               onChangeText={setNewDesc}
               placeholder="Descripción opcional"
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
               multiline
             />
             <View style={{ flexDirection: 'row', gap: spacing[2] }}>
@@ -171,7 +177,7 @@ export default function AreaTemplatesScreen() {
             onPress={() => setShowNew(true)}
             style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
           >
-            <Plus size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+            <Plus size={14} color={t.brand[600]} strokeWidth={2.2} />
             <Text style={styles.addBtnText}>Nueva plantilla</Text>
           </Pressable>
         )}
@@ -181,6 +187,8 @@ export default function AreaTemplatesScreen() {
 }
 
 function TemplateItems({ templateId }: { templateId: string }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const itemsQ = useTemplateItems(templateId);
   const addMut = useAddTemplateItem(templateId);
   const removeMut = useRemoveTemplateItem(templateId);
@@ -190,6 +198,8 @@ function TemplateItems({ templateId }: { templateId: string }) {
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<TaskPriority>('normal');
   const [labelsInput, setLabelsInput] = useState('');
+
+  const options = priorityOptions(t);
 
   const nextPos = useMemo(
     () => (itemsQ.data?.length ?? 0),
@@ -208,12 +218,12 @@ function TemplateItems({ templateId }: { templateId: string }) {
   return (
     <View style={styles.itemsBlock}>
       <SectionHeader title="Items" count={itemsQ.data?.length} />
-      {itemsQ.isLoading && <ActivityIndicator color={tokens.brand[600]} />}
+      {itemsQ.isLoading && <ActivityIndicator color={t.brand[600]} />}
       {itemsQ.data?.length === 0 && !showNew && (
         <Text style={styles.empty}>Sin items.</Text>
       )}
       {itemsQ.data?.map((it: TemplateItem) => {
-        const prioColor = PRIORITY_OPTIONS.find((p) => p.value === it.priority)?.color ?? palette.sky[500];
+        const prioColor = options.find((p) => p.value === it.priority)?.color ?? t.status.review;
         return (
           <View key={it.id} style={styles.itemRow}>
             <View style={[styles.prioDot, { backgroundColor: prioColor }]} />
@@ -225,7 +235,7 @@ function TemplateItems({ templateId }: { templateId: string }) {
               )}
             </View>
             <Pressable onPress={() => removeMut.mutate(it.id)} hitSlop={6} style={styles.deleteBtn}>
-              <Trash2 size={12} color={palette.red[600]} strokeWidth={2} />
+              <Trash2 size={12} color={t.feedback.errorFg} strokeWidth={2} />
             </Pressable>
           </View>
         );
@@ -238,24 +248,24 @@ function TemplateItems({ templateId }: { templateId: string }) {
             value={title}
             onChangeText={setTitle}
             placeholder="Título del item"
-            placeholderTextColor={tokens.text.muted}
+            placeholderTextColor={t.text.muted}
           />
           <TextInput
             style={[styles.input, { height: 60 }]}
             value={description}
             onChangeText={setDescription}
             placeholder="Descripción opcional"
-            placeholderTextColor={tokens.text.muted}
+            placeholderTextColor={t.text.muted}
             multiline
           />
           <View style={styles.prioRow}>
-            {PRIORITY_OPTIONS.map((opt) => {
+            {options.map((opt) => {
               const active = priority === opt.value;
               return (
                 <Pressable
                   key={opt.value}
                   onPress={() => setPriority(opt.value)}
-                  style={[styles.prioOpt, active && { backgroundColor: opt.color + '14', borderColor: opt.color }]}
+                  style={[styles.prioOpt, active && { backgroundColor: opt.color + '22', borderColor: opt.color }]}
                 >
                   <View style={[styles.prioDot, { backgroundColor: opt.color }]} />
                   <Text style={styles.prioOptText}>{opt.label}</Text>
@@ -268,7 +278,7 @@ function TemplateItems({ templateId }: { templateId: string }) {
             value={labelsInput}
             onChangeText={setLabelsInput}
             placeholder="Labels (separadas por coma)"
-            placeholderTextColor={tokens.text.muted}
+            placeholderTextColor={t.text.muted}
           />
           <View style={{ flexDirection: 'row', gap: spacing[2] }}>
             <Button onPress={handleAdd} loading={addMut.isPending} size="sm">Agregar</Button>
@@ -280,7 +290,7 @@ function TemplateItems({ templateId }: { templateId: string }) {
           onPress={() => setShowNew(true)}
           style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
         >
-          <Plus size={12} color={tokens.brand[600]} strokeWidth={2.2} />
+          <Plus size={12} color={t.brand[600]} strokeWidth={2.2} />
           <Text style={styles.addBtnText}>Agregar item</Text>
         </Pressable>
       )}
@@ -288,63 +298,67 @@ function TemplateItems({ templateId }: { templateId: string }) {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[4], paddingBottom: spacing[10], gap: spacing[3] },
 
   tplHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
-  tplName: { fontSize: typography.size.base, fontWeight: typography.weight.semibold as '600', color: tokens.text.primary },
-  tplDesc: { fontSize: typography.size.xs, color: tokens.text.muted, marginTop: 2 },
+  tplName: { fontSize: typography.size.base, fontWeight: typography.weight.semibold as '600', color: t.text.primary },
+  tplDesc: { fontSize: typography.size.xs, color: t.text.muted, marginTop: 2 },
   applyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: spacing[2], paddingVertical: 6,
-    borderRadius: radius.md, backgroundColor: palette.brand[600],
+    borderRadius: radius.md, backgroundColor: t.brand[600],
   },
-  applyBtnPressed: { backgroundColor: palette.brand[700] },
-  applyBtnText: { color: tokens.brand.fg, fontSize: typography.size.xs, fontWeight: typography.weight.semibold as '600' },
+  applyBtnPressed: { backgroundColor: t.brand[700] },
+  applyBtnText: { color: t.brand.fg, fontSize: typography.size.xs, fontWeight: typography.weight.semibold as '600' },
   deleteBtn: { padding: 4 },
 
   itemsBlock: {
-    borderTopWidth: 1, borderTopColor: tokens.border.subtle,
+    borderTopWidth: 1, borderTopColor: t.border.subtle,
     paddingTop: spacing[2], gap: spacing[2],
   },
   itemRow: {
     flexDirection: 'row', alignItems: 'center', gap: spacing[2],
     paddingVertical: 6, paddingHorizontal: spacing[2],
-    backgroundColor: tokens.bg.subtle, borderRadius: radius.md,
+    backgroundColor: t.bg.subtle, borderRadius: radius.md,
   },
   prioDot: { width: 8, height: 8, borderRadius: 4 },
-  itemTitle: { fontSize: typography.size.sm, color: tokens.text.primary, fontWeight: typography.weight.medium as '500' },
-  itemDesc: { fontSize: typography.size.xs, color: tokens.text.muted, marginTop: 2 },
-  itemLabels: { fontSize: typography.size['2xs'], color: tokens.brand[600], marginTop: 2 },
+  itemTitle: { fontSize: typography.size.sm, color: t.text.primary, fontWeight: typography.weight.medium as '500' },
+  itemDesc: { fontSize: typography.size.xs, color: t.text.muted, marginTop: 2 },
+  itemLabels: { fontSize: typography.size['2xs'], color: t.brand[600], marginTop: 2 },
 
-  newItemBox: { gap: spacing[2], padding: spacing[2], borderWidth: 1, borderColor: palette.brand[200], borderRadius: radius.md, backgroundColor: palette.brand[50] },
+  newItemBox: {
+    gap: spacing[2], padding: spacing[2],
+    borderWidth: 1, borderColor: t.brand[100], borderRadius: radius.md,
+    backgroundColor: t.brand[50],
+  },
 
   prioRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[1] },
   prioOpt: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: spacing[2], paddingVertical: 4,
-    borderRadius: radius.full, borderWidth: 1, borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderRadius: radius.full, borderWidth: 1, borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
-  prioOptText: { fontSize: typography.size.xs, color: tokens.text.secondary },
+  prioOptText: { fontSize: typography.size.xs, color: t.text.secondary },
 
   input: {
-    borderWidth: 1, borderColor: tokens.border.strong, borderRadius: radius.md,
+    borderWidth: 1, borderColor: t.border.strong, borderRadius: radius.md,
     paddingHorizontal: spacing[3], paddingVertical: 8,
-    fontSize: typography.size.sm, color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface, textAlignVertical: 'top',
+    fontSize: typography.size.sm, color: t.text.primary,
+    backgroundColor: t.bg.surface, textAlignVertical: 'top',
   },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: palette.brand[300],
+    borderWidth: 1, borderStyle: 'dashed', borderColor: t.brand[100],
     borderRadius: radius.md, paddingVertical: 8,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
-  addBtnPressed: { backgroundColor: palette.brand[50] },
-  addBtnText: { color: tokens.brand[600], fontSize: typography.size.xs, fontWeight: typography.weight.semibold as '600' },
+  addBtnPressed: { backgroundColor: t.brand[50] },
+  addBtnText: { color: t.brand[600], fontSize: typography.size.xs, fontWeight: typography.weight.semibold as '600' },
 
-  empty: { color: tokens.text.muted, fontSize: typography.size.sm, paddingVertical: spacing[2] },
-  error: { color: palette.red[600], fontSize: typography.size.sm, paddingVertical: spacing[2] },
+  empty: { color: t.text.muted, fontSize: typography.size.sm, paddingVertical: spacing[2] },
+  error: { color: t.feedback.errorFg, fontSize: typography.size.sm, paddingVertical: spacing[2] },
 });

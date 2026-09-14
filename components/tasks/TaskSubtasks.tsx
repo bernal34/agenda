@@ -3,8 +3,9 @@ import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 
 import { Check, Plus, X } from 'lucide-react-native';
 
 import { SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import {
   Subtask,
   useCreateSubtask,
@@ -14,6 +15,8 @@ import {
 } from '../../lib/queries/subtasks';
 
 export function TaskSubtasks({ taskId }: { taskId: string }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data, isLoading } = useTaskSubtasks(taskId);
   const createMut = useCreateSubtask(taskId);
   const toggleMut = useToggleSubtask(taskId);
@@ -22,13 +25,13 @@ export function TaskSubtasks({ taskId }: { taskId: string }) {
   const [draft, setDraft] = useState('');
 
   const handleAdd = async () => {
-    const t = draft.trim();
-    if (t.length < 2) return;
+    const text = draft.trim();
+    if (text.length < 2) return;
     setDraft('');
     try {
-      await createMut.mutateAsync(t);
+      await createMut.mutateAsync(text);
     } catch (err) {
-      setDraft(t);
+      setDraft(text);
       notify('No se pudo agregar', err instanceof Error ? err.message : 'Error');
     }
   };
@@ -45,7 +48,7 @@ export function TaskSubtasks({ taskId }: { taskId: string }) {
         right={total > 0 ? <Text style={styles.fraction}>de {total}</Text> : undefined}
       />
 
-      {isLoading && <ActivityIndicator color={tokens.brand[600]} />}
+      {isLoading && <ActivityIndicator color={t.brand[600]} />}
       <View style={styles.list}>
         {data?.map((s) => (
           <SubtaskRow
@@ -63,7 +66,7 @@ export function TaskSubtasks({ taskId }: { taskId: string }) {
           value={draft}
           onChangeText={setDraft}
           placeholder="Nueva subtarea..."
-          placeholderTextColor={tokens.text.muted}
+          placeholderTextColor={t.text.muted}
           onSubmitEditing={handleAdd}
           blurOnSubmit={false}
         />
@@ -76,7 +79,7 @@ export function TaskSubtasks({ taskId }: { taskId: string }) {
             pressed && canAdd && styles.addBtnPressed,
           ]}
         >
-          <Plus size={16} color={tokens.brand.fg} strokeWidth={2.4} />
+          <Plus size={16} color={t.brand.fg} strokeWidth={2.4} />
         </Pressable>
       </View>
     </View>
@@ -92,6 +95,8 @@ function SubtaskRow({
   onToggle: () => void;
   onDelete: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   return (
     <View style={styles.row}>
       <Pressable
@@ -99,23 +104,23 @@ function SubtaskRow({
         hitSlop={6}
         style={[styles.checkbox, subtask.done && styles.checkboxDone]}
       >
-        {subtask.done && <Check size={12} color={tokens.brand.fg} strokeWidth={3} />}
+        {subtask.done && <Check size={12} color={t.brand.fg} strokeWidth={3} />}
       </Pressable>
       <Text style={[styles.rowTitle, subtask.done && styles.rowTitleDone]}>
         {subtask.title}
       </Text>
       <Pressable onPress={onDelete} hitSlop={6} style={styles.deleteBtn}>
-        <X size={14} color={tokens.text.muted} strokeWidth={2} />
+        <X size={14} color={t.text.muted} strokeWidth={2} />
       </Pressable>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   section: { marginTop: spacing[5], gap: spacing[1] },
   fraction: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 
@@ -127,29 +132,29 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
     gap: spacing[2],
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
   },
   checkbox: {
     width: 20,
     height: 20,
     borderRadius: 4,
     borderWidth: 1.5,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
   checkboxDone: {
-    backgroundColor: palette.brand[600],
-    borderColor: palette.brand[600],
+    backgroundColor: t.brand[600],
+    borderColor: t.brand[600],
   },
   rowTitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
     flex: 1,
   },
   rowTitleDone: {
-    color: tokens.text.muted,
+    color: t.text.muted,
     textDecorationLine: 'line-through',
   },
   deleteBtn: { padding: 4 },
@@ -158,21 +163,21 @@ const styles = StyleSheet.create({
   addInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
   addBtn: {
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     width: 40,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addBtnDisabled: { backgroundColor: palette.brand[300] },
-  addBtnPressed: { backgroundColor: palette.brand[700] },
+  addBtnDisabled: { backgroundColor: t.brand[100] },
+  addBtnPressed: { backgroundColor: t.brand[700] },
 });

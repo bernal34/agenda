@@ -12,10 +12,12 @@ import { useRouter } from 'expo-router';
 import { AlertTriangle, Inbox, UserCheck } from 'lucide-react-native';
 
 import { Avatar, Badge, EmptyState, ScreenHeader } from '../../components/ui';
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
 import { useDelegatedTasks, type DelegatedTask } from '../../lib/queries/tasks';
 import type { TaskStatus } from '../../lib/taskModel';
 import { isoToLocalTime } from '../../lib/dateFormat';
+import { statusColor } from '../../lib/statusColor';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { useAuthStore } from '../../stores/authStore';
 
 // Mismo orden de columnas que en el Kanban del área.
@@ -28,13 +30,6 @@ const STATUS_LABEL: Record<string, string> = {
   done:        'Completadas',
 };
 
-const STATUS_COLOR: Record<string, string> = {
-  todo:        palette.slate[500],
-  in_progress: palette.amber[500],
-  in_review:   palette.sky[500],
-  done:        palette.emerald[500],
-};
-
 function formatDateShort(iso: string | null): string | null {
   if (!iso) return null;
   const d = new Date(iso + 'T00:00:00');
@@ -44,6 +39,8 @@ function formatDateShort(iso: string | null): string | null {
 export default function DelegatedScreen() {
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: tasks = [], isLoading } = useDelegatedTasks(userId);
 
   const [assigneeFilter, setAssigneeFilter] = useState<string | null>(null);
@@ -53,7 +50,7 @@ export default function DelegatedScreen() {
   // Pools de filtros derivados del dataset actual (no extra queries).
   const assigneePool = useMemo(() => {
     const map = new Map<string, { id: string; full_name: string | null; avatar_url: string | null }>();
-    tasks.forEach((t) => t.assignedTo.forEach((u) => map.set(u.id, u)));
+    tasks.forEach((task) => task.assignedTo.forEach((u) => map.set(u.id, u)));
     return Array.from(map.values()).sort((a, b) =>
       (a.full_name ?? '').localeCompare(b.full_name ?? ''),
     );
@@ -61,8 +58,8 @@ export default function DelegatedScreen() {
 
   const areaPool = useMemo(() => {
     const map = new Map<string, { id: string; name: string; color: string }>();
-    tasks.forEach((t) => {
-      if (t.area) map.set(t.area.id, { id: t.area.id, name: t.area.name, color: t.area.color });
+    tasks.forEach((task) => {
+      if (task.area) map.set(task.area.id, { id: task.area.id, name: task.area.name, color: task.area.color });
     });
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
@@ -70,12 +67,12 @@ export default function DelegatedScreen() {
   const today = new Date().toISOString().slice(0, 10);
 
   const filtered = useMemo(() => {
-    return tasks.filter((t) => {
-      if (assigneeFilter && !t.assignedTo.some((u) => u.id === assigneeFilter)) return false;
-      if (areaFilter && t.area?.id !== areaFilter) return false;
+    return tasks.filter((task) => {
+      if (assigneeFilter && !task.assignedTo.some((u) => u.id === assigneeFilter)) return false;
+      if (areaFilter && task.area?.id !== areaFilter) return false;
       if (overdueOnly) {
-        if (t.status === 'done') return false;
-        if (!t.due_date || t.due_date >= today) return false;
+        if (task.status === 'done') return false;
+        if (!task.due_date || task.due_date >= today) return false;
       }
       return true;
     });
@@ -84,10 +81,10 @@ export default function DelegatedScreen() {
   const groups = useMemo(() => {
     const byStatus = new Map<TaskStatus, DelegatedTask[]>();
     STATUS_ORDER.forEach((s) => byStatus.set(s, []));
-    filtered.forEach((t) => {
-      const arr = byStatus.get(t.status) ?? [];
-      arr.push(t);
-      byStatus.set(t.status, arr);
+    filtered.forEach((task) => {
+      const arr = byStatus.get(task.status) ?? [];
+      arr.push(task);
+      byStatus.set(task.status, arr);
     });
     return STATUS_ORDER.map((s) => ({ status: s, items: byStatus.get(s) ?? [] })).filter(
       (g) => g.items.length > 0,
@@ -120,7 +117,7 @@ export default function DelegatedScreen() {
       />
 
       {isLoading ? (
-        <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: spacing[10] }} />
+        <ActivityIndicator color={t.brand[600]} style={{ marginTop: spacing[10] }} />
       ) : tasks.length === 0 ? (
         <EmptyState
           icon={Inbox}
@@ -140,10 +137,10 @@ export default function DelegatedScreen() {
                 >
                   <AlertTriangle
                     size={12}
-                    color={overdueOnly ? palette.red[600] : tokens.text.muted}
+                    color={overdueOnly ? t.feedback.errorFg : t.text.muted}
                     strokeWidth={2.2}
                   />
-                  <Text style={[styles.filterChipText, overdueOnly && { color: palette.red[600] }]}>
+                  <Text style={[styles.filterChipText, overdueOnly && { color: t.feedback.errorFg }]}>
                     Vencidas
                   </Text>
                 </Pressable>
@@ -156,7 +153,7 @@ export default function DelegatedScreen() {
                         onPress={() => setAreaFilter(active ? null : a.id)}
                         style={[
                           styles.filterChip,
-                          active && { backgroundColor: a.color + '14', borderColor: a.color },
+                          active && { backgroundColor: a.color + '22', borderColor: a.color },
                         ]}
                       >
                         <View style={[styles.areaDot, { backgroundColor: a.color }]} />
@@ -176,7 +173,7 @@ export default function DelegatedScreen() {
                       style={[styles.filterChip, active && styles.filterChipActive]}
                     >
                       <Avatar name={name} uri={u.avatar_url} size="xs" />
-                      <Text style={[styles.filterChipText, active && { color: tokens.brand[600] }]}>
+                      <Text style={[styles.filterChipText, active && { color: t.brand[600] }]}>
                         {name}
                       </Text>
                     </Pressable>
@@ -200,15 +197,15 @@ export default function DelegatedScreen() {
           {groups.map((g) => (
             <View key={g.status} style={styles.section}>
               <View style={styles.sectionHeader}>
-                <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[g.status] }]} />
+                <View style={[styles.statusDot, { backgroundColor: statusColor(t, g.status) }]} />
                 <Text style={styles.sectionTitle}>{STATUS_LABEL[g.status] ?? g.status}</Text>
                 <Text style={styles.sectionCount}>{g.items.length}</Text>
               </View>
-              {g.items.map((t) => (
+              {g.items.map((task) => (
                 <DelegatedRow
-                  key={t.id}
-                  task={t}
-                  onPress={() => router.push(`/tasks/${t.id}` as never)}
+                  key={task.id}
+                  task={task}
+                  onPress={() => router.push(`/tasks/${task.id}` as never)}
                 />
               ))}
             </View>
@@ -226,6 +223,8 @@ function DelegatedRow({
   task: DelegatedTask;
   onPress: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const start = formatDateShort(task.start_date);
   const due = formatDateShort(task.due_date);
   const dateLabel =
@@ -233,7 +232,7 @@ function DelegatedRow({
       ? `${start} – ${due}`
       : due ?? start ?? null;
   const time = isoToLocalTime(task.start_at);
-  const statusColor = STATUS_COLOR[task.status] ?? palette.slate[500];
+  const tone = statusColor(t, task.status);
   const isDone = task.status === 'done';
 
   return (
@@ -241,7 +240,7 @@ function DelegatedRow({
       onPress={onPress}
       style={({ pressed }) => [
         styles.card,
-        { borderLeftColor: statusColor },
+        { borderLeftColor: tone },
         isDone && styles.cardDone,
         pressed && styles.cardPressed,
       ]}
@@ -261,7 +260,7 @@ function DelegatedRow({
 
       {task.assignedTo.length > 0 && (
         <View style={styles.assigneesRow}>
-          <UserCheck size={12} color={tokens.text.muted} strokeWidth={2} />
+          <UserCheck size={12} color={t.text.muted} strokeWidth={2} />
           <View style={styles.avatars}>
             {task.assignedTo.slice(0, 4).map((u) => (
               <Avatar key={u.id} name={u.full_name ?? '?'} uri={u.avatar_url} size="xs" />
@@ -281,18 +280,18 @@ function DelegatedRow({
           <View
             style={[
               styles.progressFill,
-              { width: `${task.progress}%`, backgroundColor: statusColor },
+              { width: `${task.progress}%`, backgroundColor: tone },
             ]}
           />
         </View>
-        <Text style={[styles.progressLabel, { color: statusColor }]}>{task.progress}%</Text>
+        <Text style={[styles.progressLabel, { color: tone }]}>{task.progress}%</Text>
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[5], paddingBottom: spacing[10], gap: spacing[5] },
 
   filters: { marginHorizontal: -spacing[5] },
@@ -311,20 +310,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
   filterChipActive: {
-    backgroundColor: palette.brand[500] + '14',
-    borderColor: palette.brand[500],
+    backgroundColor: t.brand[50],
+    borderColor: t.brand[500],
   },
   filterChipActiveDanger: {
-    backgroundColor: palette.red[500] + '14',
-    borderColor: palette.red[500],
+    backgroundColor: t.feedback.errorBg,
+    borderColor: t.feedback.errorFg,
   },
   filterChipText: {
     fontSize: typography.size.xs,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
   areaDot: { width: 8, height: 8, borderRadius: 4 },
@@ -335,7 +334,7 @@ const styles = StyleSheet.create({
   },
   clearChipText: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textDecorationLine: 'underline',
   },
@@ -351,27 +350,27 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   sectionCount: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 
   card: {
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.lg,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     borderLeftWidth: 3,
     gap: spacing[2],
     ...shadow.soft,
   },
-  cardPressed: { backgroundColor: tokens.bg.subtle },
+  cardPressed: { backgroundColor: t.bg.subtle },
   cardDone: { opacity: 0.7 },
 
   row: {
@@ -382,30 +381,30 @@ const styles = StyleSheet.create({
   },
   dateText: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 
   title: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     lineHeight: 19,
   },
-  titleDone: { textDecorationLine: 'line-through', color: tokens.text.muted },
+  titleDone: { textDecorationLine: 'line-through', color: t.text.muted },
 
   assigneesRow: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   avatars: { flexDirection: 'row', gap: -6 },
   extraAssignees: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     marginLeft: 2,
   },
   assigneesText: {
     flex: 1,
     fontSize: typography.size.xs,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
   },
 
   footer: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
@@ -413,7 +412,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     overflow: 'hidden',
   },
   progressFill: { height: '100%', borderRadius: 2 },

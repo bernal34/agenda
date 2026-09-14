@@ -3,8 +3,9 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Plus, X, UserPlus, Crown, Shield } from 'lucide-react-native';
 
 import { Avatar, SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { confirmAction, notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import {
   AreaMember,
   useAddAssignee,
@@ -20,6 +21,8 @@ interface Props {
 }
 
 export function TaskAssignees({ taskId, areaId, currentUserId }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: assignees = [], isLoading } = useTaskAssignees(taskId);
   const { data: members = [] } = useAreaMembers(areaId);
   const addMut = useAddAssignee(taskId);
@@ -57,7 +60,7 @@ export function TaskAssignees({ taskId, areaId, currentUserId }: Props) {
         right={
           available.length > 0 && !picking ? (
             <Pressable onPress={() => setPicking(true)} hitSlop={6} style={styles.addToggle}>
-              <UserPlus size={12} color={tokens.brand[600]} strokeWidth={2.4} />
+              <UserPlus size={12} color={t.brand[600]} strokeWidth={2.4} />
               <Text style={styles.addToggleText}>Asignar</Text>
             </Pressable>
           ) : null
@@ -85,7 +88,7 @@ export function TaskAssignees({ taskId, areaId, currentUserId }: Props) {
               hitSlop={6}
               style={styles.removeBtn}
             >
-              <X size={12} color={tokens.text.muted} strokeWidth={2} />
+              <X size={12} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
         );
@@ -97,7 +100,7 @@ export function TaskAssignees({ taskId, areaId, currentUserId }: Props) {
           <View style={styles.pickerHeader}>
             <Text style={styles.pickerTitle}>Asignar a alguien del área</Text>
             <Pressable onPress={() => setPicking(false)} hitSlop={6}>
-              <X size={14} color={tokens.text.muted} strokeWidth={2} />
+              <X size={14} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
           {available.length === 0 ? (
@@ -114,6 +117,8 @@ export function TaskAssignees({ taskId, areaId, currentUserId }: Props) {
 }
 
 function PickerRow({ member, onAdd }: { member: AreaMember; onAdd: () => void }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const name = member.full_name?.trim() || 'Miembro';
   return (
     <Pressable
@@ -126,14 +131,14 @@ function PickerRow({ member, onAdd }: { member: AreaMember; onAdd: () => void })
         <View style={styles.roleRow}>
           {member.role === 'owner' && (
             <>
-              <Crown size={10} color={palette.amber[600]} strokeWidth={2.2} />
-              <Text style={[styles.roleText, { color: palette.amber[700] }]}>owner</Text>
+              <Crown size={10} color={t.feedback.warningFg} strokeWidth={2.2} />
+              <Text style={[styles.roleText, { color: t.feedback.warningFg }]}>owner</Text>
             </>
           )}
           {member.role === 'admin' && (
             <>
-              <Shield size={10} color={palette.sky[600]} strokeWidth={2.2} />
-              <Text style={[styles.roleText, { color: palette.sky[700] }]}>admin</Text>
+              <Shield size={10} color={t.status.review} strokeWidth={2.2} />
+              <Text style={[styles.roleText, { color: t.status.review }]}>admin</Text>
             </>
           )}
           {member.role === 'member' && (
@@ -142,13 +147,13 @@ function PickerRow({ member, onAdd }: { member: AreaMember; onAdd: () => void })
         </View>
       </View>
       <View style={styles.addPill}>
-        <Plus size={12} color={tokens.brand.fg} strokeWidth={2.4} />
+        <Plus size={12} color={t.brand.fg} strokeWidth={2.4} />
       </View>
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   section: { marginTop: spacing[5], gap: spacing[1] },
 
   addToggle: {
@@ -161,12 +166,12 @@ const styles = StyleSheet.create({
   },
   addToggleText: {
     fontSize: typography.size.xs,
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontWeight: typography.weight.semibold as '600',
   },
 
   empty: {
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontSize: typography.size.sm,
     fontStyle: 'italic',
     paddingVertical: spacing[2],
@@ -180,27 +185,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
     borderRadius: radius.md,
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
   },
   name: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   youHint: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
   removeBtn: { padding: 4 },
 
   picker: {
     marginTop: spacing[3],
-    backgroundColor: tokens.bg.subtle,
+    backgroundColor: t.bg.subtle,
     borderRadius: radius.lg,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   pickerHeader: {
     flexDirection: 'row',
@@ -211,7 +216,7 @@ const styles = StyleSheet.create({
   pickerTitle: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -222,16 +227,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: spacing[2],
     borderRadius: radius.md,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     marginBottom: 4,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
-  pickerRowPressed: { backgroundColor: palette.brand[50], borderColor: palette.brand[200] },
+  pickerRowPressed: { backgroundColor: t.brand[50], borderColor: t.brand[100] },
   roleRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 1 },
   roleText: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
     textTransform: 'lowercase',
   },
@@ -239,7 +244,7 @@ const styles = StyleSheet.create({
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     alignItems: 'center',
     justifyContent: 'center',
   },

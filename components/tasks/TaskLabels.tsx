@@ -3,9 +3,10 @@ import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Plus, X, Tag } from 'lucide-react-native';
 
 import { SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { colorForLabel } from '../../lib/labelColor';
 import { notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import {
   useAddLabel,
   useAreaLabels,
@@ -19,6 +20,8 @@ interface Props {
 }
 
 export function TaskLabels({ taskId, areaId }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: labels = [], isLoading } = useTaskLabels(taskId);
   const { data: areaLabels = [] } = useAreaLabels(areaId);
   const addMut = useAddLabel(taskId);
@@ -61,7 +64,7 @@ export function TaskLabels({ taskId, areaId }: Props) {
         right={
           !showInput ? (
             <Pressable onPress={() => setShowInput(true)} hitSlop={6} style={styles.addToggle}>
-              <Plus size={12} color={tokens.brand[600]} strokeWidth={2.4} />
+              <Plus size={12} color={t.brand[600]} strokeWidth={2.4} />
               <Text style={styles.addToggleText}>Agregar</Text>
             </Pressable>
           ) : null
@@ -71,7 +74,7 @@ export function TaskLabels({ taskId, areaId }: Props) {
       <View style={styles.labelsRow}>
         {!isLoading && labels.length === 0 && !showInput && (
           <View style={styles.emptyHint}>
-            <Tag size={12} color={tokens.text.muted} strokeWidth={2} />
+            <Tag size={12} color={t.text.muted} strokeWidth={2} />
             <Text style={styles.emptyHintText}>Sin etiquetas</Text>
           </View>
         )}
@@ -99,7 +102,7 @@ export function TaskLabels({ taskId, areaId }: Props) {
               value={draft}
               onChangeText={setDraft}
               placeholder="Ej: urgente, cliente-x, q1..."
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
               autoCapitalize="none"
               autoCorrect={false}
               autoFocus
@@ -114,14 +117,14 @@ export function TaskLabels({ taskId, areaId }: Props) {
                 pressed && styles.addBtnPressed,
               ]}
             >
-              <Plus size={14} color={tokens.brand.fg} strokeWidth={2.4} />
+              <Plus size={14} color={t.brand.fg} strokeWidth={2.4} />
             </Pressable>
             <Pressable
               onPress={() => { setShowInput(false); setDraft(''); }}
               hitSlop={6}
               style={styles.cancelBtn}
             >
-              <X size={14} color={tokens.text.muted} strokeWidth={2} />
+              <X size={14} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
 
@@ -148,7 +151,9 @@ export function TaskLabels({ taskId, areaId }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+// El color de cada etiqueta sale de `colorForLabel`, que deriva del texto:
+// es identidad de la etiqueta, no del tema, y por eso no se toca acá.
+const makeStyles = (t: Tokens) => StyleSheet.create({
   section: { marginTop: spacing[5], gap: spacing[1] },
 
   addToggle: {
@@ -161,7 +166,7 @@ const styles = StyleSheet.create({
   },
   addToggleText: {
     fontSize: typography.size.xs,
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontWeight: typography.weight.semibold as '600',
   },
 
@@ -189,7 +194,7 @@ const styles = StyleSheet.create({
   emptyHint: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   emptyHintText: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontStyle: 'italic',
   },
 
@@ -202,24 +207,24 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
   addBtn: {
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     width: 36,
     height: 36,
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  addBtnDisabled: { backgroundColor: palette.brand[300] },
-  addBtnPressed: { backgroundColor: palette.brand[700] },
+  addBtnDisabled: { backgroundColor: t.brand[100] },
+  addBtnPressed: { backgroundColor: t.brand[700] },
   cancelBtn: {
     width: 32,
     height: 36,
@@ -236,7 +241,7 @@ const styles = StyleSheet.create({
   },
   suggestLabel: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
     textTransform: 'uppercase',
     letterSpacing: 0.5,

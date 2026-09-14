@@ -11,8 +11,9 @@ import { useRouter } from 'expo-router';
 import { CircleCheck, GitBranch, Plus, Search, X } from 'lucide-react-native';
 
 import { SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import {
   DependencyRef,
   useAddDependency,
@@ -28,6 +29,8 @@ interface Props {
 
 export function TaskDependencies({ taskId, areaId }: Props) {
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const depsQ = useTaskDependencies(taskId);
   const areaTasksQ = useAreaTasks(areaId);
   const addMut = useAddDependency(taskId);
@@ -38,8 +41,8 @@ export function TaskDependencies({ taskId, areaId }: Props) {
 
   const exclude = useMemo(() => {
     const s = new Set<string>([taskId]);
-    depsQ.data?.blockedBy.forEach((t) => s.add(t.id));
-    depsQ.data?.blocks.forEach((t) => s.add(t.id));
+    depsQ.data?.blockedBy.forEach((dep) => s.add(dep.id));
+    depsQ.data?.blocks.forEach((dep) => s.add(dep.id));
     return s;
   }, [depsQ.data, taskId]);
 
@@ -47,8 +50,8 @@ export function TaskDependencies({ taskId, areaId }: Props) {
     const pool = areaTasksQ.data ?? [];
     const filt = q.trim().toLowerCase();
     return pool
-      .filter((t) => !exclude.has(t.id))
-      .filter((t) => !filt || t.title.toLowerCase().includes(filt))
+      .filter((task) => !exclude.has(task.id))
+      .filter((task) => !filt || task.title.toLowerCase().includes(filt))
       .slice(0, 12);
   }, [areaTasksQ.data, exclude, q]);
 
@@ -79,9 +82,9 @@ export function TaskDependencies({ taskId, areaId }: Props) {
         style={({ pressed }) => [styles.depRow, pressed && styles.depRowPressed]}
       >
         {isDone ? (
-          <CircleCheck size={14} color={palette.emerald[600]} strokeWidth={2.2} />
+          <CircleCheck size={14} color={t.status.done} strokeWidth={2.2} />
         ) : (
-          <GitBranch size={14} color={tokens.text.muted} strokeWidth={2} />
+          <GitBranch size={14} color={t.text.muted} strokeWidth={2} />
         )}
         <Text style={[styles.depTitle, isDone && styles.depTitleDone]} numberOfLines={1}>
           {ref.title}
@@ -91,7 +94,7 @@ export function TaskDependencies({ taskId, areaId }: Props) {
           hitSlop={6}
           style={styles.depRemove}
         >
-          <X size={12} color={tokens.text.muted} strokeWidth={2} />
+          <X size={12} color={t.text.muted} strokeWidth={2} />
         </Pressable>
       </Pressable>
     );
@@ -103,7 +106,7 @@ export function TaskDependencies({ taskId, areaId }: Props) {
     <View style={styles.section}>
       <SectionHeader title="Dependencias" />
 
-      {depsQ.isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 4 }} />}
+      {depsQ.isLoading && <ActivityIndicator color={t.brand[600]} style={{ marginTop: 4 }} />}
       {depsQ.error && (
         <Text style={styles.error}>
           {depsQ.error instanceof Error ? depsQ.error.message : 'Error cargando dependencias'}
@@ -118,7 +121,7 @@ export function TaskDependencies({ taskId, areaId }: Props) {
             style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
             hitSlop={6}
           >
-            <Plus size={12} color={tokens.brand[600]} strokeWidth={2.2} />
+            <Plus size={12} color={t.brand[600]} strokeWidth={2.2} />
             <Text style={styles.addBtnText}>Agregar</Text>
           </Pressable>
         </View>
@@ -136,7 +139,7 @@ export function TaskDependencies({ taskId, areaId }: Props) {
             style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
             hitSlop={6}
           >
-            <Plus size={12} color={tokens.brand[600]} strokeWidth={2.2} />
+            <Plus size={12} color={t.brand[600]} strokeWidth={2.2} />
             <Text style={styles.addBtnText}>Agregar</Text>
           </Pressable>
         </View>
@@ -149,17 +152,17 @@ export function TaskDependencies({ taskId, areaId }: Props) {
       {pickerOpen && (
         <View style={styles.picker}>
           <View style={styles.searchBar}>
-            <Search size={14} color={tokens.text.muted} strokeWidth={2} />
+            <Search size={14} color={t.text.muted} strokeWidth={2} />
             <TextInput
               style={styles.searchInput}
               value={q}
               onChangeText={setQ}
               placeholder={pickerOpen === 'blockedBy' ? 'Buscar tarea que bloquea' : 'Buscar tarea bloqueada'}
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
               autoFocus
             />
             <Pressable onPress={() => { setPickerOpen(null); setQ(''); }} hitSlop={6}>
-              <X size={14} color={tokens.text.muted} strokeWidth={2} />
+              <X size={14} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
           {candidates.length === 0 && (
@@ -167,13 +170,13 @@ export function TaskDependencies({ taskId, areaId }: Props) {
               {areaTasksQ.isLoading ? 'Cargando...' : 'Sin coincidencias en el tablero.'}
             </Text>
           )}
-          {candidates.map((t) => (
+          {candidates.map((task) => (
             <Pressable
-              key={t.id}
-              onPress={() => handlePick(t)}
+              key={task.id}
+              onPress={() => handlePick(task)}
               style={({ pressed }) => [styles.candRow, pressed && styles.candRowPressed]}
             >
-              <Text style={styles.candTitle} numberOfLines={1}>{t.title}</Text>
+              <Text style={styles.candTitle} numberOfLines={1}>{task.title}</Text>
             </Pressable>
           ))}
         </View>
@@ -182,7 +185,7 @@ export function TaskDependencies({ taskId, areaId }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   section: { marginTop: spacing[5], gap: spacing[2] },
   subBlock: { gap: spacing[1] },
   subHeader: {
@@ -193,7 +196,7 @@ const styles = StyleSheet.create({
   },
   subLabel: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
@@ -203,21 +206,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.md,
     paddingVertical: 8,
     paddingHorizontal: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
-  depRowPressed: { backgroundColor: palette.brand[50], borderColor: palette.brand[200] },
+  depRowPressed: { backgroundColor: t.brand[50], borderColor: t.brand[100] },
   depTitle: {
     flex: 1,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   depTitleDone: {
-    color: tokens.text.muted,
+    color: t.text.muted,
     textDecorationLine: 'line-through',
   },
   depRemove: {
@@ -231,13 +234,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[2],
     paddingVertical: 4,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: t.brand[50],
     borderWidth: 1,
-    borderColor: palette.brand[200],
+    borderColor: t.brand[100],
   },
-  addBtnPressed: { backgroundColor: palette.brand[100] },
+  addBtnPressed: { backgroundColor: t.brand[100] },
   addBtnText: {
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
   },
@@ -245,44 +248,44 @@ const styles = StyleSheet.create({
   picker: {
     marginTop: spacing[2],
     borderWidth: 1,
-    borderColor: palette.brand[200],
+    borderColor: t.brand[100],
     borderRadius: radius.md,
     padding: spacing[2],
     gap: spacing[1],
-    backgroundColor: palette.brand[50],
+    backgroundColor: t.brand[50],
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing[2],
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 8,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   candRow: {
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.sm,
   },
-  candRowPressed: { backgroundColor: palette.brand[100] },
+  candRowPressed: { backgroundColor: t.brand[100] },
   candTitle: {
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
 
   empty: {
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontSize: typography.size.xs,
     paddingVertical: 4,
   },
-  error: { color: palette.red[600], fontSize: typography.size.sm },
+  error: { color: t.feedback.errorFg, fontSize: typography.size.sm },
 });

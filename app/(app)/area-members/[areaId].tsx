@@ -13,7 +13,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Check, ChevronDown, Search, UserMinus, UserPlus } from 'lucide-react-native';
 
 import { Avatar, Card, EmptyState, ScreenHeader, SectionHeader } from '../../../components/ui';
-import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../../constants/theme';
 import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import {
@@ -24,6 +24,7 @@ import {
   useRemoveAreaMember,
   useUpdateAreaMemberRole,
 } from '../../../lib/queries/areaMembers';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 import { useAuthStore } from '../../../stores/authStore';
 
 const ROLE_LABEL: Record<AreaMemberRole, string> = {
@@ -37,6 +38,8 @@ const ROLE_OPTIONS: AreaMemberRole[] = ['member', 'admin', 'owner'];
 export default function AreaMembersScreen() {
   const { areaId } = useLocalSearchParams<{ areaId: string }>();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
 
   const areasQ = useMyAreas(userId);
   const area = areasQ.data?.find((a) => a.id === areaId);
@@ -97,19 +100,19 @@ export default function AreaMembersScreen() {
       />
 
       <View style={styles.searchBar}>
-        <Search size={14} color={tokens.text.muted} strokeWidth={2} />
+        <Search size={14} color={t.text.muted} strokeWidth={2} />
         <TextInput
           style={styles.searchInput}
           value={q}
           onChangeText={setQ}
           placeholder="Buscar por nombre"
-          placeholderTextColor={tokens.text.muted}
+          placeholderTextColor={t.text.muted}
           autoCapitalize="none"
         />
       </View>
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {candQ.isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {candQ.isLoading && <ActivityIndicator color={t.brand[600]} style={{ marginTop: 24 }} />}
         {candQ.error && (
           <Text style={styles.error}>
             {candQ.error instanceof Error ? candQ.error.message : 'Error cargando usuarios'}
@@ -134,7 +137,7 @@ export default function AreaMembersScreen() {
                   hitSlop={6}
                 >
                   <Text style={styles.roleText}>{ROLE_LABEL[role]}</Text>
-                  <ChevronDown size={12} color={tokens.text.muted} strokeWidth={2} />
+                  <ChevronDown size={12} color={t.text.muted} strokeWidth={2} />
                 </Pressable>
                 {isOpen && (
                   <View style={styles.roleMenu}>
@@ -144,11 +147,11 @@ export default function AreaMembersScreen() {
                         onPress={() => onChangeRole(c, r)}
                         style={({ pressed }) => [
                           styles.roleOption,
-                          pressed && { backgroundColor: palette.brand[50] },
+                          pressed && styles.roleOptionPressed,
                         ]}
                       >
                         <Text style={styles.roleOptionText}>{ROLE_LABEL[r]}</Text>
-                        {role === r && <Check size={12} color={palette.brand[600]} strokeWidth={2.2} />}
+                        {role === r && <Check size={12} color={t.brand[600]} strokeWidth={2.2} />}
                       </Pressable>
                     ))}
                   </View>
@@ -160,7 +163,7 @@ export default function AreaMembersScreen() {
                 style={({ pressed }) => [styles.iconBtn, pressed && styles.iconBtnPressed]}
                 disabled={removeMut.isPending}
               >
-                <UserMinus size={14} color={palette.red[600]} strokeWidth={2} />
+                <UserMinus size={14} color={t.feedback.errorFg} strokeWidth={2} />
               </Pressable>
             </Card>
           );
@@ -186,7 +189,7 @@ export default function AreaMembersScreen() {
               style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
               disabled={addMut.isPending}
             >
-              <UserPlus size={14} color={tokens.brand.fg} strokeWidth={2.2} />
+              <UserPlus size={14} color={t.brand.fg} strokeWidth={2.2} />
               <Text style={styles.addBtnText}>Agregar</Text>
             </Pressable>
           </Card>
@@ -196,8 +199,8 @@ export default function AreaMembersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[4], paddingBottom: spacing[10], gap: spacing[2] },
   searchBar: {
     flexDirection: 'row',
@@ -206,16 +209,16 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing[4],
     marginTop: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
   searchInput: {
     flex: 1,
     paddingVertical: 8,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   row: {
     flexDirection: 'row',
@@ -225,11 +228,11 @@ const styles = StyleSheet.create({
   name: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   subtle: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 2,
   },
   roleBtn: {
@@ -240,15 +243,15 @@ const styles = StyleSheet.create({
   },
   roleText: {
     fontSize: typography.size.xs,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
   roleMenu: {
     marginTop: spacing[1],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     borderRadius: radius.md,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     overflow: 'hidden',
     alignSelf: 'flex-start',
   },
@@ -261,18 +264,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     minWidth: 120,
   },
+  roleOptionPressed: { backgroundColor: t.brand[50] },
   roleOptionText: {
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   iconBtn: {
     padding: 8,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: palette.red[200],
-    backgroundColor: palette.red[50],
+    borderColor: t.border.default,
+    backgroundColor: t.feedback.errorBg,
   },
-  iconBtnPressed: { backgroundColor: palette.red[100] },
+  iconBtnPressed: { backgroundColor: t.bg.subtle },
   addBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -280,19 +284,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
   },
-  addBtnPressed: { backgroundColor: palette.brand[700] },
+  addBtnPressed: { backgroundColor: t.brand[700] },
   addBtnText: {
-    color: tokens.brand.fg,
+    color: t.brand.fg,
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
   },
   empty: {
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontSize: typography.size.sm,
     textAlign: 'center',
     paddingVertical: spacing[2],
   },
-  error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[2] },
+  error: { color: t.feedback.errorFg, fontSize: typography.size.sm, padding: spacing[2] },
 });

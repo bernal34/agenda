@@ -31,24 +31,18 @@ import {
   SectionHeader,
   SkeletonList,
 } from '../../../components/ui';
-import {
-  palette,
-  radius,
-  spacing,
-  tokens,
-  typography,
-} from '../../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../../constants/theme';
 import {
   dmyAndTimeToIso,
   dmyToIso,
   isoToDmy,
-  isoToLocalDmy,
   isoToLocalTime,
   isValidDmy,
   isValidTime,
 } from '../../../lib/dateFormat';
 import { confirmAction, notify } from '../../../lib/notify';
 import { useBoardStages } from '../../../lib/queries/stages';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 import {
   RecurrenceFreq,
   RecurrenceRule,
@@ -60,12 +54,15 @@ import {
 import { TaskPriority, TaskStatus } from '../../../lib/queries/tasks';
 import { useAuthStore } from '../../../stores/authStore';
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'low',    label: 'Baja',    color: palette.slate[400] },
-  { value: 'normal', label: 'Normal',  color: palette.sky[500] },
-  { value: 'high',   label: 'Alta',    color: palette.amber[500] },
-  { value: 'urgent', label: 'Urgente', color: palette.red[500] },
-];
+/** El color de prioridad sale del tema en render, no de un const de módulo. */
+function priorityOptions(t: Tokens): { value: TaskPriority; label: string; color: string }[] {
+  return [
+    { value: 'low',    label: 'Baja',    color: t.text.muted },
+    { value: 'normal', label: 'Normal',  color: t.status.review },
+    { value: 'high',   label: 'Alta',    color: t.status.progress },
+    { value: 'urgent', label: 'Urgente', color: t.status.urgent },
+  ];
+}
 
 const PROGRESS_STEPS = [0, 25, 50, 75, 100];
 
@@ -80,6 +77,8 @@ export default function EditTaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: task, isLoading } = useTask(id);
   const updateMut = useUpdateTask();
   const deleteMut = useDeleteTask();
@@ -101,6 +100,7 @@ export default function EditTaskScreen() {
   const [dirty, setDirty] = useState(false);
 
   const stagesQ = useBoardStages(task?.area_id);
+  const priorities = priorityOptions(t);
 
   useEffect(() => {
     if (!task) return;
@@ -217,7 +217,7 @@ export default function EditTaskScreen() {
   if (isLoading) {
     return (
       <ModalScreen onClose={close} maxWidth={760}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
+        <SafeAreaView style={styles.screen} edges={['top']}>
           <ScreenHeader title="Tarea" backLabel="Cerrar" onBack={close} />
           <View style={styles.body}>
             <SkeletonList count={2} variant="row" />
@@ -233,7 +233,7 @@ export default function EditTaskScreen() {
   if (!task) {
     return (
       <ModalScreen onClose={close} maxWidth={560}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
+        <SafeAreaView style={styles.screen} edges={['top']}>
           <ScreenHeader title="Tarea" backLabel="Cerrar" onBack={close} />
           <EmptyState
             icon={Trash2}
@@ -254,7 +254,7 @@ export default function EditTaskScreen() {
 
   return (
     <ModalScreen onClose={close} maxWidth={760}>
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg.app }} edges={['top']}>
+    <SafeAreaView style={styles.screen} edges={['top']}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScreenHeader
           title="Tarea"
@@ -279,7 +279,7 @@ export default function EditTaskScreen() {
             value={title}
             onChangeText={(v) => { setTitle(v); bump(); }}
             placeholder="Título de la tarea"
-            placeholderTextColor={tokens.text.muted}
+            placeholderTextColor={t.text.muted}
           />
 
           <View>
@@ -289,7 +289,7 @@ export default function EditTaskScreen() {
               value={description}
               onChangeText={(v) => { setDescription(v); bump(); }}
               placeholder="Detalles, contexto, links..."
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
               multiline
               textAlignVertical="top"
             />
@@ -306,7 +306,7 @@ export default function EditTaskScreen() {
                     onPress={() => { setStatus(opt.code); bump(); }}
                     style={[
                       styles.option,
-                      active && { backgroundColor: opt.color + '14', borderColor: opt.color },
+                      active && { backgroundColor: opt.color + '22', borderColor: opt.color },
                     ]}
                   >
                     <View style={[styles.dot, { backgroundColor: opt.color }]} />
@@ -327,7 +327,7 @@ export default function EditTaskScreen() {
           <View style={styles.section}>
             <SectionHeader title="Prioridad" />
             <View style={styles.optionsRow}>
-              {PRIORITY_OPTIONS.map((opt) => {
+              {priorities.map((opt) => {
                 const active = priority === opt.value;
                 return (
                   <Pressable
@@ -335,7 +335,7 @@ export default function EditTaskScreen() {
                     onPress={() => { setPriority(opt.value); bump(); }}
                     style={[
                       styles.option,
-                      active && { backgroundColor: opt.color + '14', borderColor: opt.color },
+                      active && { backgroundColor: opt.color + '22', borderColor: opt.color },
                     ]}
                   >
                     <View style={[styles.dot, { backgroundColor: opt.color }]} />
@@ -392,19 +392,13 @@ export default function EditTaskScreen() {
                     <Pressable
                       key={opt.value}
                       onPress={() => { setLeadTime(opt.value); bump(); }}
-                      style={[
-                        styles.option,
-                        active && {
-                          backgroundColor: palette.brand[500] + '14',
-                          borderColor: palette.brand[500],
-                        },
-                      ]}
+                      style={[styles.option, active && styles.optionActiveBrand]}
                     >
                       <Text
                         style={[
                           styles.optionText,
                           active && {
-                            color: palette.brand[600],
+                            color: t.brand[600],
                             fontWeight: typography.weight.semibold as '600',
                           },
                         ]}
@@ -427,15 +421,12 @@ export default function EditTaskScreen() {
                   <Pressable
                     key={opt.value}
                     onPress={() => { setRecFreq(opt.value); bump(); }}
-                    style={[
-                      styles.option,
-                      active && { backgroundColor: palette.brand[50], borderColor: palette.brand[500] },
-                    ]}
+                    style={[styles.option, active && styles.optionActiveBrand]}
                   >
                     <Text
                       style={[
                         styles.optionText,
-                        active && { color: palette.brand[700], fontWeight: typography.weight.semibold as '600' },
+                        active && { color: t.brand[700], fontWeight: typography.weight.semibold as '600' },
                       ]}
                     >
                       {opt.label}
@@ -535,6 +526,8 @@ function SnoozeSection({
   pending: boolean;
   onPick: (kind: '+1d' | '+1w' | 'clear') => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const active = value && new Date(value) > new Date();
   const label = active
     ? new Date(value!).toLocaleDateString('es-AR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
@@ -544,7 +537,7 @@ function SnoozeSection({
       <SectionHeader title="Posponer" />
       {active && (
         <View style={styles.snoozeBanner}>
-          <BellOff size={12} color={palette.amber[700]} strokeWidth={2.2} />
+          <BellOff size={12} color={t.feedback.warningFg} strokeWidth={2.2} />
           <Text style={styles.snoozeBannerText}>Oculta de Mis tareas hasta {label}</Text>
         </View>
       )}
@@ -567,9 +560,9 @@ function SnoozeSection({
           <Pressable
             onPress={() => onPick('clear')}
             disabled={pending}
-            style={[styles.option, { borderColor: palette.red[300] }, pending && { opacity: 0.6 }]}
+            style={[styles.option, { borderColor: t.feedback.errorFg }, pending && { opacity: 0.6 }]}
           >
-            <Text style={[styles.optionText, { color: palette.red[600] }]}>Quitar</Text>
+            <Text style={[styles.optionText, { color: t.feedback.errorFg }]}>Quitar</Text>
           </Pressable>
         )}
       </View>
@@ -577,72 +570,37 @@ function SnoozeSection({
   );
 }
 
-function PillOption({
-  label,
-  badge,
-  active,
-  onPress,
-}: {
-  label: string;
-  badge?: string;
-  active: boolean;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[
-        styles.option,
-        active && { backgroundColor: palette.brand[50], borderColor: palette.brand[500] },
-      ]}
-    >
-      {badge && (
-        <Text style={[styles.optionBadge, active && { color: palette.brand[600] }]}>
-          {badge}
-        </Text>
-      )}
-      <Text
-        style={[
-          styles.optionText,
-          active && { color: palette.brand[700], fontWeight: typography.weight.semibold as '600' },
-        ]}
-      >
-        {label}
-      </Text>
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  screen: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[5], paddingBottom: spacing[10], gap: spacing[3] },
 
   titleInput: {
     fontSize: typography.size['2xl'],
     fontWeight: typography.weight.bold as '700',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.4,
     paddingVertical: spacing[1],
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
     marginBottom: spacing[2],
   },
 
   label: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
     marginBottom: spacing[1],
   },
   textArea: {
     height: 90,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     fontSize: typography.size.base,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
 
   section: { gap: spacing[1] },
@@ -656,17 +614,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
+  optionActiveBrand: { backgroundColor: t.brand[50], borderColor: t.brand[500] },
   optionText: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
-  },
-  optionBadge: {
-    fontSize: typography.size.sm,
-    color: tokens.text.muted,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
 
@@ -676,20 +631,20 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     alignItems: 'center',
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
   progBtnActive: {
-    backgroundColor: palette.brand[600],
-    borderColor: palette.brand[600],
+    backgroundColor: t.brand[600],
+    borderColor: t.brand[600],
   },
   progBtnText: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.semibold as '600',
   },
-  progBtnTextActive: { color: tokens.brand.fg },
+  progBtnTextActive: { color: t.brand.fg },
 
   recIntervalRow: {
     flexDirection: 'row',
@@ -700,23 +655,23 @@ const styles = StyleSheet.create({
   },
   recIntervalLabel: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
   },
   recIntervalInput: {
     width: 56,
     paddingVertical: 6,
     paddingHorizontal: spacing[2],
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
-    backgroundColor: tokens.bg.surface,
-    color: tokens.text.primary,
+    backgroundColor: t.bg.surface,
+    color: t.text.primary,
     textAlign: 'center',
     fontSize: typography.size.sm,
   },
   recHint: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     flexBasis: '100%',
   },
 
@@ -724,9 +679,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: palette.amber[50],
+    backgroundColor: t.feedback.warningBg,
     borderWidth: 1,
-    borderColor: palette.amber[200],
+    borderColor: t.border.default,
     borderRadius: radius.md,
     paddingHorizontal: spacing[2],
     paddingVertical: 6,
@@ -736,7 +691,7 @@ const styles = StyleSheet.create({
   },
   snoozeBannerText: {
     fontSize: typography.size.xs,
-    color: palette.amber[700],
+    color: t.feedback.warningFg,
     fontWeight: typography.weight.medium as '500',
   },
 });

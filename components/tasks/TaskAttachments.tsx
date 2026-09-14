@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ActivityIndicator, Image, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import {
   Paperclip,
@@ -11,8 +11,9 @@ import {
 } from 'lucide-react-native';
 
 import { SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { confirmAction, notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import {
   TaskAttachment,
   getAttachmentUrl,
@@ -47,6 +48,8 @@ function formatStamp(iso: string) {
 }
 
 export function TaskAttachments({ taskId }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: attachments = [], isLoading } = useTaskAttachments(taskId);
   const uploadMut = useUploadAttachment();
   const deleteMut = useDeleteAttachment();
@@ -120,10 +123,10 @@ export function TaskAttachments({ taskId }: Props) {
             style={[styles.addBtn, uploadMut.isPending && styles.addBtnDisabled]}
           >
             {uploadMut.isPending ? (
-              <ActivityIndicator size="small" color={tokens.brand[600]} />
+              <ActivityIndicator size="small" color={t.brand[600]} />
             ) : (
               <>
-                <Upload size={12} color={tokens.brand[600]} strokeWidth={2.4} />
+                <Upload size={12} color={t.brand[600]} strokeWidth={2.4} />
                 <Text style={styles.addBtnText}>Adjuntar</Text>
               </>
             )}
@@ -131,11 +134,11 @@ export function TaskAttachments({ taskId }: Props) {
         }
       />
 
-      {isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginVertical: spacing[2] }} />}
+      {isLoading && <ActivityIndicator color={t.brand[600]} style={{ marginVertical: spacing[2] }} />}
 
       {!isLoading && attachments.length === 0 && (
         <View style={styles.emptyHint}>
-          <Paperclip size={12} color={tokens.text.muted} strokeWidth={2} />
+          <Paperclip size={12} color={t.text.muted} strokeWidth={2} />
           <Text style={styles.emptyHintText}>Sin archivos · 25 MB máximo</Text>
         </View>
       )}
@@ -151,7 +154,11 @@ export function TaskAttachments({ taskId }: Props) {
               style={[styles.rowMain, isOpening && { opacity: 0.5 }]}
             >
               <View style={[styles.iconBox, isImage && styles.iconBoxImage]}>
-                <Icon size={16} color={tokens.brand[600]} strokeWidth={2} />
+                <Icon
+                  size={16}
+                  color={isImage ? t.status.review : t.brand[600]}
+                  strokeWidth={2}
+                />
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={styles.filename} numberOfLines={1}>
@@ -163,14 +170,14 @@ export function TaskAttachments({ taskId }: Props) {
                   {formatStamp(att.uploaded_at)}
                 </Text>
               </View>
-              {isOpening && <ActivityIndicator size="small" color={tokens.text.muted} />}
+              {isOpening && <ActivityIndicator size="small" color={t.text.muted} />}
             </Pressable>
             <Pressable
               onPress={() => handleDelete(att)}
               hitSlop={6}
               style={styles.removeBtn}
             >
-              <X size={12} color={tokens.text.muted} strokeWidth={2} />
+              <X size={12} color={t.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
         );
@@ -179,10 +186,7 @@ export function TaskAttachments({ taskId }: Props) {
   );
 }
 
-// silence unused image import
-void Image;
-
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   section: { marginTop: spacing[5], gap: spacing[1] },
 
   addBtn: {
@@ -196,7 +200,7 @@ const styles = StyleSheet.create({
   addBtnDisabled: { opacity: 0.5 },
   addBtnText: {
     fontSize: typography.size.xs,
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontWeight: typography.weight.semibold as '600',
   },
 
@@ -208,7 +212,7 @@ const styles = StyleSheet.create({
   },
   emptyHintText: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontStyle: 'italic',
   },
 
@@ -219,9 +223,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: spacing[2],
     borderRadius: radius.md,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     marginBottom: 6,
   },
   rowMain: {
@@ -234,24 +238,24 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: t.brand[50],
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.brand[100],
+    borderColor: t.brand[100],
   },
   iconBoxImage: {
-    backgroundColor: palette.sky[50],
-    borderColor: palette.sky[100],
+    backgroundColor: t.status.review + '1A',
+    borderColor: t.status.review + '33',
   },
   filename: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   meta: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
     marginTop: 1,
   },

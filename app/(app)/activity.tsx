@@ -14,12 +14,13 @@ import {
 import type { LucideIcon } from 'lucide-react-native';
 
 import { Badge, EmptyState, ScreenHeader } from '../../components/ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import {
   ActivityAction,
   ActivityEntry,
   useRecentActivity,
 } from '../../lib/queries/activity';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { useAuthStore } from '../../stores/authStore';
 
 const ACTION_ICON: Record<ActivityAction, LucideIcon> = {
@@ -32,15 +33,22 @@ const ACTION_ICON: Record<ActivityAction, LucideIcon> = {
   'task.assigned':        UserPlus,
 };
 
-const ACTION_COLOR: Record<ActivityAction, string> = {
-  'task.created':        palette.brand[600],
-  'task.status_changed': palette.sky[600],
-  'task.completed':      palette.emerald[600],
-  'subtask.completed':   palette.emerald[600],
-  'comment.added':       palette.slate[600],
-  'attachment.added':    palette.amber[600],
-  'task.assigned':       palette.brand[600],
-};
+/**
+ * El color sale del tema en render, no de un const de módulo: los tonos 600
+ * de la paleta quedaban apagados sobre fondo oscuro.
+ */
+function actionColor(t: Tokens, action: ActivityAction): string {
+  switch (action) {
+    case 'task.created':        return t.brand[600];
+    case 'task.assigned':       return t.brand[600];
+    case 'task.status_changed': return t.status.review;
+    case 'task.completed':      return t.status.done;
+    case 'subtask.completed':   return t.status.done;
+    case 'attachment.added':    return t.feedback.warningFg;
+    case 'comment.added':       return t.text.secondary;
+    default:                    return t.text.secondary;
+  }
+}
 
 function relTime(iso: string) {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -84,6 +92,8 @@ function describe(entry: ActivityEntry): { verb: string; emphasis?: string } {
 export default function ActivityScreen() {
   const userId = useAuthStore((s) => s.user?.id);
   const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: entries, isLoading, error } = useRecentActivity(userId);
 
   return (
@@ -92,7 +102,7 @@ export default function ActivityScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {isLoading && (
-          <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 32 }} />
+          <ActivityIndicator color={t.brand[600]} style={{ marginTop: 32 }} />
         )}
 
         {error && (
@@ -111,7 +121,7 @@ export default function ActivityScreen() {
 
         {entries?.map((entry) => {
           const Icon = ACTION_ICON[entry.action] ?? CircleDot;
-          const color = ACTION_COLOR[entry.action] ?? palette.slate[600];
+          const color = actionColor(t, entry.action);
           const { verb, emphasis } = describe(entry);
           const goToTask = entry.task_id
             ? () => router.push(`/tasks/${entry.task_id}` as never)
@@ -150,8 +160,8 @@ export default function ActivityScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[8] },
 
   row: {
@@ -160,13 +170,13 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     marginBottom: spacing[2],
   },
-  rowPressed: { backgroundColor: tokens.bg.subtle },
+  rowPressed: { backgroundColor: t.bg.subtle },
 
   actionBadgeLeading: {
     width: 28,
@@ -178,15 +188,15 @@ const styles = StyleSheet.create({
 
   text: {
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
     lineHeight: 19,
   },
   verb: {
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   emphasis: {
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
 
@@ -199,9 +209,9 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.medium as '500',
   },
 
-  error: { color: palette.red[600], fontSize: typography.size.sm, padding: spacing[4] },
+  error: { color: t.feedback.errorFg, fontSize: typography.size.sm, padding: spacing[4] },
 });

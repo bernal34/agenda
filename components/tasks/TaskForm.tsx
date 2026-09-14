@@ -12,34 +12,39 @@ import {
 import { Clock as ClockIcon, Trash2 } from 'lucide-react-native';
 
 import { Avatar, Button, DateField, Input, ScreenHeader, SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { AreaMember } from '../../lib/queries/assignees';
 import {
   dmyAndTimeToIso,
   dmyToIso,
   isoToDmy,
-  isoToLocalDmy,
   isoToLocalTime,
   isValidDmy,
   isValidTime,
 } from '../../lib/dateFormat';
 import { notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { BoardStage } from '../../lib/queries/stages';
 import { TaskPriority, TaskStatus } from '../../lib/queries/tasks';
 
-const DEFAULT_STAGES: Pick<BoardStage, 'code' | 'label' | 'color'>[] = [
-  { code: 'todo',        label: 'Por hacer',   color: palette.slate[500] },
-  { code: 'in_progress', label: 'En progreso', color: palette.amber[500] },
-  { code: 'in_review',   label: 'En revisión', color: palette.sky[500] },
-  { code: 'done',        label: 'Hecho',       color: palette.emerald[500] },
-];
+/** Etapas y prioridades salen del tema en render, no de un const de módulo. */
+function defaultStages(t: Tokens): Pick<BoardStage, 'code' | 'label' | 'color'>[] {
+  return [
+    { code: 'todo',        label: 'Por hacer',   color: t.status.todo },
+    { code: 'in_progress', label: 'En progreso', color: t.status.progress },
+    { code: 'in_review',   label: 'En revisión', color: t.status.review },
+    { code: 'done',        label: 'Hecho',       color: t.status.done },
+  ];
+}
 
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'low',    label: 'Baja',    color: palette.slate[400] },
-  { value: 'normal', label: 'Normal',  color: palette.sky[500] },
-  { value: 'high',   label: 'Alta',    color: palette.amber[500] },
-  { value: 'urgent', label: 'Urgente', color: palette.red[500] },
-];
+function priorityOptions(t: Tokens): { value: TaskPriority; label: string; color: string }[] {
+  return [
+    { value: 'low',    label: 'Baja',    color: t.text.muted },
+    { value: 'normal', label: 'Normal',  color: t.status.review },
+    { value: 'high',   label: 'Alta',    color: t.status.progress },
+    { value: 'urgent', label: 'Urgente', color: t.status.urgent },
+  ];
+}
 
 export interface TaskFormValues {
   title: string;
@@ -109,7 +114,10 @@ export function TaskForm({
   onDelete,
   onCancel,
 }: Props) {
-  const stageOptions = stages && stages.length > 0 ? stages : DEFAULT_STAGES;
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
+  const stageOptions = stages && stages.length > 0 ? stages : defaultStages(t);
+  const priorities = priorityOptions(t);
   const initialDt = initialDateTime(initial);
   const [title, setTitle] = useState(initial?.title ?? '');
   const [description, setDescription] = useState(initial?.description ?? '');
@@ -223,7 +231,7 @@ export function TaskForm({
             value={description}
             onChangeText={setDescription}
             placeholder="Detalles, contexto, links..."
-            placeholderTextColor={tokens.text.muted}
+            placeholderTextColor={t.text.muted}
             multiline
             numberOfLines={4}
             textAlignVertical="top"
@@ -242,7 +250,7 @@ export function TaskForm({
                     onPress={() => setStatus(opt.code)}
                     style={[
                       styles.option,
-                      active && { backgroundColor: opt.color + '14', borderColor: opt.color },
+                      active && { backgroundColor: opt.color + '22', borderColor: opt.color },
                     ]}
                   >
                     <View style={[styles.dot, { backgroundColor: opt.color }]} />
@@ -264,7 +272,7 @@ export function TaskForm({
         <View style={styles.section}>
           <SectionHeader title="Prioridad" />
           <View style={styles.optionsRow}>
-            {PRIORITY_OPTIONS.map((opt) => {
+            {priorities.map((opt) => {
               const active = priority === opt.value;
               return (
                 <Pressable
@@ -272,7 +280,7 @@ export function TaskForm({
                   onPress={() => setPriority(opt.value)}
                   style={[
                     styles.option,
-                    active && { backgroundColor: opt.color + '14', borderColor: opt.color },
+                    active && { backgroundColor: opt.color + '22', borderColor: opt.color },
                   ]}
                 >
                   <View style={[styles.dot, { backgroundColor: opt.color }]} />
@@ -304,10 +312,7 @@ export function TaskForm({
                     onPress={() => toggleAssignee(m.id)}
                     style={[
                       styles.assigneeChip,
-                      active && {
-                        backgroundColor: palette.brand[500] + '14',
-                        borderColor: palette.brand[500],
-                      },
+                      active && styles.assigneeChipActive,
                     ]}
                   >
                     <Avatar name={m.full_name?.trim() || 'M'} uri={m.avatar_url} size="xs" />
@@ -315,7 +320,7 @@ export function TaskForm({
                       style={[
                         styles.optionText,
                         active && {
-                          color: palette.brand[600],
+                          color: t.brand[600],
                           fontWeight: typography.weight.semibold as '600',
                         },
                       ]}
@@ -345,19 +350,13 @@ export function TaskForm({
                   <Pressable
                     key={opt.value}
                     onPress={() => setLeadTime(opt.value)}
-                    style={[
-                      styles.option,
-                      active && {
-                        backgroundColor: palette.brand[500] + '14',
-                        borderColor: palette.brand[500],
-                      },
-                    ]}
+                    style={[styles.option, active && styles.optionActiveBrand]}
                   >
                     <Text
                       style={[
                         styles.optionText,
                         active && {
-                          color: palette.brand[600],
+                          color: t.brand[600],
                           fontWeight: typography.weight.semibold as '600',
                         },
                       ]}
@@ -426,6 +425,10 @@ export function TaskForm({
  * Time picker: native HTML time input on web, plain text HH:MM on native.
  * Cuando se llena, el form combina (date + time) → start_at timestamp
  * para tareas estilo agenda. Sin hora, la tarea solo tiene fecha.
+ *
+ * El `<input>` de web no toma la hoja de RN, así que sus colores se arman a
+ * mano desde los tokens: antes eran hex fijos y quedaba un recuadro blanco
+ * sobre fondo oscuro.
  */
 function StartTimeField({
   value,
@@ -434,6 +437,9 @@ function StartTimeField({
   value: string;
   onChange: (next: string) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t, scheme } = useTheme();
+
   if (Platform.OS === 'web') {
     return (
       <View style={{ gap: spacing[1] }}>
@@ -451,10 +457,11 @@ function StartTimeField({
                 paddingLeft: 12,
                 paddingRight: 12,
                 borderRadius: 8,
-                border: '1px solid #cbd5e1',
+                border: `1px solid ${t.border.strong}`,
                 fontSize: 16,
-                color: '#0f172a',
-                backgroundColor: '#ffffff',
+                color: t.text.primary,
+                backgroundColor: t.bg.surface,
+                colorScheme: scheme,
                 outline: 'none',
                 fontFamily: 'inherit',
               }}
@@ -479,26 +486,26 @@ function StartTimeField({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[5], paddingBottom: spacing[10], gap: spacing[3] },
 
   label: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
     marginBottom: spacing[1],
   },
   textArea: {
     height: 100,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: spacing[2],
     fontSize: typography.size.base,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
 
   section: { gap: spacing[1] },
@@ -512,12 +519,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
+  optionActiveBrand: { backgroundColor: t.brand[50], borderColor: t.brand[500] },
   optionText: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
@@ -530,9 +538,10 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
+  assigneeChipActive: { backgroundColor: t.brand[50], borderColor: t.brand[500] },
 
   progressRow: { flexDirection: 'row', gap: spacing[2] },
   progBtn: {
@@ -540,18 +549,18 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     alignItems: 'center',
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
   progBtnActive: {
-    backgroundColor: palette.brand[600],
-    borderColor: palette.brand[600],
+    backgroundColor: t.brand[600],
+    borderColor: t.brand[600],
   },
   progBtnText: {
     fontSize: typography.size.sm,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.semibold as '600',
   },
-  progBtnTextActive: { color: tokens.brand.fg },
+  progBtnTextActive: { color: t.brand.fg },
 });
