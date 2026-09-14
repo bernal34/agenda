@@ -1,4 +1,15 @@
-import { buildMonthCells, pad, sameDay, startOfWeek, toIso } from '../calendarGrid';
+import {
+  addDaysIso,
+  buildMonthCells,
+  eachDayIso,
+  indexByDay,
+  pad,
+  sameDay,
+  startOfWeek,
+  taskRange,
+  toIso,
+  undatedItems,
+} from '../calendarGrid';
 
 describe('pad / toIso', () => {
   it('agrega cero a la izquierda', () => {
@@ -72,5 +83,121 @@ describe('buildMonthCells', () => {
     const cells = buildMonthCells(2026, 5); // junio 2026: 30 días desde lunes → 35 celdas
     expect(cells).toHaveLength(35);
     expect(cells.slice(30).every((c) => c.date === null)).toBe(true);
+  });
+});
+
+describe('addDaysIso', () => {
+  it('suma días dentro del mes', () => {
+    expect(addDaysIso('2026-09-14', 3)).toBe('2026-09-17');
+  });
+
+  it('cruza el borde de mes y de año', () => {
+    expect(addDaysIso('2026-09-30', 1)).toBe('2026-10-01');
+    expect(addDaysIso('2026-12-31', 1)).toBe('2027-01-01');
+  });
+
+  it('resta con días negativos', () => {
+    expect(addDaysIso('2026-03-01', -1)).toBe('2026-02-28');
+    expect(addDaysIso('2024-03-01', -1)).toBe('2024-02-29');
+  });
+});
+
+describe('taskRange', () => {
+  it('usa los dos extremos cuando hay rango', () => {
+    expect(taskRange({ start_date: '2026-09-14', due_date: '2026-09-18' })).toEqual({
+      from: '2026-09-14',
+      to: '2026-09-18',
+    });
+  });
+
+  it('con una sola fecha, la tarea vive un único día', () => {
+    expect(taskRange({ start_date: null, due_date: '2026-09-18' })).toEqual({
+      from: '2026-09-18',
+      to: '2026-09-18',
+    });
+    expect(taskRange({ start_date: '2026-09-14', due_date: null })).toEqual({
+      from: '2026-09-14',
+      to: '2026-09-14',
+    });
+  });
+
+  it('sin fechas no entra al calendario', () => {
+    expect(taskRange({ start_date: null, due_date: null })).toBeNull();
+  });
+
+  it('ordena un rango invertido en vez de perder la tarea', () => {
+    expect(taskRange({ start_date: '2026-09-18', due_date: '2026-09-14' })).toEqual({
+      from: '2026-09-14',
+      to: '2026-09-18',
+    });
+  });
+});
+
+describe('eachDayIso', () => {
+  it('incluye los dos extremos', () => {
+    expect(eachDayIso('2026-09-14', '2026-09-17')).toEqual([
+      '2026-09-14',
+      '2026-09-15',
+      '2026-09-16',
+      '2026-09-17',
+    ]);
+  });
+
+  it('un solo día devuelve un solo elemento', () => {
+    expect(eachDayIso('2026-09-14', '2026-09-14')).toEqual(['2026-09-14']);
+  });
+
+  it('corta en maxDays ante un rango disparatado', () => {
+    expect(eachDayIso('2026-09-14', '2926-09-14')).toHaveLength(366);
+  });
+});
+
+describe('indexByDay', () => {
+  const kino = { id: 'k', start_date: '2026-09-14', due_date: '2026-09-18' };
+  const suelta = { id: 's', start_date: null, due_date: '2026-09-19' };
+  const sinFecha = { id: 'n', start_date: null, due_date: null };
+
+  it('pone la tarea en todos los días de su rango, no solo en el due_date', () => {
+    const idx = indexByDay([kino]);
+    expect([...idx.keys()].sort()).toEqual([
+      '2026-09-14',
+      '2026-09-15',
+      '2026-09-16',
+      '2026-09-17',
+      '2026-09-18',
+    ]);
+  });
+
+  it('marca inicio, fin y si abarca varios días', () => {
+    const idx = indexByDay([kino]);
+    expect(idx.get('2026-09-14')![0]).toMatchObject({ isStart: true, isEnd: false, spans: true });
+    expect(idx.get('2026-09-16')![0]).toMatchObject({ isStart: false, isEnd: false, spans: true });
+    expect(idx.get('2026-09-18')![0]).toMatchObject({ isStart: false, isEnd: true, spans: true });
+  });
+
+  it('una tarea de un día es inicio y fin a la vez, sin span', () => {
+    const idx = indexByDay([suelta]);
+    expect(idx.get('2026-09-19')![0]).toMatchObject({ isStart: true, isEnd: true, spans: false });
+  });
+
+  it('agrupa varias tareas en el mismo día', () => {
+    const idx = indexByDay([kino, { id: 'x', start_date: '2026-09-16', due_date: null }]);
+    expect(idx.get('2026-09-16')).toHaveLength(2);
+  });
+
+  it('descarta las que no tienen ninguna fecha', () => {
+    expect(indexByDay([sinFecha]).size).toBe(0);
+  });
+});
+
+describe('undatedItems', () => {
+  it('devuelve solo las que no tienen ninguna fecha', () => {
+    const items = [
+      { id: 'a', start_date: null, due_date: null },
+      { id: 'b', start_date: '2026-09-14', due_date: null },
+      { id: 'c', start_date: null, due_date: '2026-09-18' },
+      { id: 'd', start_date: null, due_date: null },
+    ];
+    expect(undatedItems(items).map((i) => i.id)).toEqual(['a', 'd']);
   });
 });

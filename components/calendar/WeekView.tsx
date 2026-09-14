@@ -2,8 +2,10 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronLeft, ChevronRight, Plus } from 'lucide-react-native';
 
-import { palette, radius, shadow, spacing, tokens, typography } from '../../constants/theme';
-import { sameDay as sameIso, startOfWeek, toIso } from '../../lib/calendarGrid';
+import { radius, shadow, spacing, typography, type Tokens } from '../../constants/theme';
+import { indexByDay, sameDay as sameIso, startOfWeek, toIso } from '../../lib/calendarGrid';
+import { statusColor } from '../../lib/statusColor';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { MyTask } from '../../lib/queries/tasks';
 
 const WEEKDAYS_SHORT = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
@@ -18,13 +20,6 @@ interface Props {
   onAdd: (iso: string) => void;
 }
 
-const STATUS_COLOR: Record<string, string> = {
-  todo:        palette.slate[500],
-  in_progress: palette.amber[500],
-  in_review:   palette.sky[500],
-  done:        palette.emerald[500],
-};
-
 export function WeekView({
   weekAnchor,
   tasks,
@@ -34,6 +29,8 @@ export function WeekView({
   onTaskPress,
   onAdd,
 }: Props) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const today = new Date();
   const weekStart = useMemo(() => startOfWeek(weekAnchor), [weekAnchor]);
 
@@ -45,16 +42,9 @@ export function WeekView({
     });
   }, [weekStart]);
 
-  const tasksByDate = useMemo(() => {
-    const m = new Map<string, MyTask[]>();
-    tasks.forEach((t) => {
-      if (!t.due_date) return;
-      const list = m.get(t.due_date) ?? [];
-      list.push(t);
-      m.set(t.due_date, list);
-    });
-    return m;
-  }, [tasks]);
+  // Cada tarea ocupa todos los días de su rango, así que el lunes muestra lo
+  // que está en curso el lunes y no solo lo que vence ese día.
+  const byDay = useMemo(() => indexByDay(tasks), [tasks]);
 
   const weekEnd = days[6];
   const sameMonth = weekStart.getMonth() === weekEnd.getMonth();
@@ -66,14 +56,14 @@ export function WeekView({
     <View style={styles.container}>
       <View style={styles.header}>
         <Pressable onPress={onPrev} hitSlop={8} style={styles.navBtn}>
-          <ChevronLeft size={18} color={tokens.text.secondary} strokeWidth={2} />
+          <ChevronLeft size={18} color={t.text.secondary} strokeWidth={2} />
         </Pressable>
         <Pressable onPress={onToday} style={styles.todayBtn}>
           <Text style={styles.todayText}>Hoy</Text>
         </Pressable>
         <Text style={styles.rangeLabel}>{rangeLabel}</Text>
         <Pressable onPress={onNext} hitSlop={8} style={styles.navBtn}>
-          <ChevronRight size={18} color={tokens.text.secondary} strokeWidth={2} />
+          <ChevronRight size={18} color={t.text.secondary} strokeWidth={2} />
         </Pressable>
       </View>
 
@@ -82,7 +72,10 @@ export function WeekView({
           const iso = toIso(d);
           const isToday = sameIso(d, today);
           const isWeekend = idx >= 5;
-          const dayTasks = tasksByDate.get(iso) ?? [];
+          // Lo que vence ese día va primero: es lo que hay que mirar.
+          const dayEntries = [...(byDay.get(iso) ?? [])].sort(
+            (a, b) => Number(b.isEnd) - Number(a.isEnd),
+          );
           return (
             <View
               key={iso}
@@ -100,40 +93,47 @@ export function WeekView({
                   <Text style={[styles.dayNum, isToday && styles.dayNumToday]}>
                     {d.getDate()}
                   </Text>
-                  {isToday && (
-                    <View style={styles.todayDot} />
-                  )}
+                  {isToday && <View style={styles.todayDot} />}
                 </View>
                 <Pressable
                   onPress={() => onAdd(iso)}
                   hitSlop={6}
                   style={({ pressed }) => [styles.addInline, pressed && styles.addInlinePressed]}
                 >
-                  <Plus size={12} color={tokens.brand[600]} strokeWidth={2.4} />
+                  <Plus size={12} color={t.brand[600]} strokeWidth={2.4} />
                 </Pressable>
               </View>
 
-              {dayTasks.length === 0 ? (
+              {dayEntries.length === 0 ? (
                 <Text style={styles.empty}>—</Text>
               ) : (
-                dayTasks.map((t) => {
-                  const tone = STATUS_COLOR[t.status] ?? palette.slate[500];
+                dayEntries.map(({ task, isEnd, spans }) => {
+                  const tone = statusColor(t, task.status);
+                  // Un día intermedio de un rango se atenúa para que cinco días
+                  // de la misma tarea no se lean como cinco tareas distintas.
+                  const ongoing = spans && !isEnd;
                   return (
                     <Pressable
-                      key={t.id}
-                      onPress={() => onTaskPress(t.id)}
+                      key={`${iso}-${task.id}`}
+                      onPress={() => onTaskPress(task.id)}
                       style={({ pressed }) => [
                         styles.taskRow,
                         { borderLeftColor: tone },
+                        ongoing && styles.taskRowOngoing,
                         pressed && styles.taskRowPressed,
                       ]}
                     >
-                      {t.area && (
-                        <View style={[styles.areaDot, { backgroundColor: t.area.color }]} />
+                      {task.area && (
+                        <View style={[styles.areaDot, { backgroundColor: task.area.color }]} />
                       )}
                       <Text style={styles.taskTitle} numberOfLines={1}>
-                        {t.title}
+                        {task.title}
                       </Text>
+                      {spans && isEnd && (
+                        <View style={[styles.dueTag, { borderColor: tone }]}>
+                          <Text style={[styles.dueTagText, { color: tone }]}>vence</Text>
+                        </View>
+                      )}
                     </Pressable>
                   );
                 })
@@ -146,13 +146,13 @@ export function WeekView({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   container: {
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.xl,
     padding: spacing[3],
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     ...shadow.soft,
   },
 
@@ -162,7 +162,7 @@ const styles = StyleSheet.create({
     gap: spacing[2],
     paddingBottom: spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
     marginBottom: spacing[2],
   },
   navBtn: {
@@ -172,25 +172,25 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   todayBtn: {
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.md,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
   },
   todayText: {
     fontSize: typography.size.xs,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.secondary,
+    color: t.text.secondary,
   },
   rangeLabel: {
     flex: 1,
     fontSize: typography.size.sm,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     textTransform: 'capitalize',
     letterSpacing: -0.1,
     textAlign: 'center',
@@ -202,8 +202,8 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     marginBottom: spacing[1],
   },
-  dayBlockToday: { backgroundColor: palette.brand[50] },
-  dayBlockWeekend: { backgroundColor: tokens.bg.subtle, opacity: 0.85 },
+  dayBlockToday: { backgroundColor: t.brand[50] },
+  dayBlockWeekend: { backgroundColor: t.bg.subtle },
 
   dayHeader: {
     flexDirection: 'row',
@@ -218,24 +218,24 @@ const styles = StyleSheet.create({
   },
   dayName: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.6,
   },
-  dayNameToday: { color: palette.brand[700] },
+  dayNameToday: { color: t.brand[600] },
   dayNum: {
     fontSize: typography.size.lg,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.bold as '700',
     letterSpacing: -0.3,
   },
-  dayNumToday: { color: palette.brand[700] },
+  dayNumToday: { color: t.brand[600] },
   todayDot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: palette.brand[600],
+    backgroundColor: t.brand[600],
     alignSelf: 'center',
   },
 
@@ -247,14 +247,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.brand[200],
+    borderColor: t.brand[100],
     borderStyle: 'dashed',
   },
-  addInlinePressed: { backgroundColor: palette.brand[100] },
+  addInlinePressed: { backgroundColor: t.brand[50] },
 
   empty: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     paddingVertical: 4,
   },
 
@@ -265,19 +265,32 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: spacing[2],
     borderRadius: radius.sm,
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     borderLeftWidth: 3,
     marginBottom: 4,
   },
-  taskRowPressed: { backgroundColor: tokens.bg.subtle },
+  taskRowOngoing: { opacity: 0.7 },
+  taskRowPressed: { backgroundColor: t.bg.subtle },
   areaDot: { width: 6, height: 6, borderRadius: 3 },
   taskTitle: {
     flex: 1,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
+    color: t.text.primary,
     fontWeight: typography.weight.medium as '500',
     letterSpacing: -0.1,
+  },
+  dueTag: {
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+  },
+  dueTagText: {
+    fontSize: typography.size['2xs'],
+    fontWeight: typography.weight.semibold as '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
   },
 });

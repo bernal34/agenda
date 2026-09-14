@@ -37,6 +37,7 @@ import {
   SectionHeader,
   SkeletonList,
 } from '../../../components/ui';
+import { undatedItems } from '../../../lib/calendarGrid';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useMyTasks, MyTask, TaskStatus } from '../../../lib/queries/tasks';
 import {
@@ -142,6 +143,10 @@ export default function HomeScreen() {
     () => filtered.filter((t2) => t2.due_date === selectedDay),
     [filtered, selectedDay],
   );
+
+  // Sin fecha no entran a ningún día del calendario. Antes se descartaban en
+  // silencio y desaparecían de las vistas de semana y mes.
+  const undated = useMemo(() => undatedItems(filtered), [filtered]);
 
   const displayName =
     (user?.user_metadata as { full_name?: string } | undefined)?.full_name ??
@@ -344,6 +349,25 @@ export default function HomeScreen() {
                 </Pressable>
               </View>
             </>
+          )}
+
+          {/* Sin fecha — visible en semana y mes, que si no las esconden */}
+          {view !== 'list' && tasksQ.data && undated.length > 0 && (
+            <View style={styles.daySection}>
+              <View style={styles.daySectionHeader}>
+                <Text style={styles.daySectionTitle}>Sin fecha</Text>
+                <Text style={styles.daySectionCount}>
+                  {undated.length} {undated.length === 1 ? 'tarea' : 'tareas'}
+                </Text>
+              </View>
+              {undated.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  onPress={() => router.push(`/tasks/${task.id}` as never)}
+                />
+              ))}
+            </View>
           )}
 
           {/* List view */}
