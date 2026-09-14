@@ -8,7 +8,6 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import {
   ShieldAlert,
   Crown,
@@ -21,13 +20,12 @@ import {
 
 import {
   Avatar,
-  Badge,
   Card,
   EmptyState,
   ScreenHeader,
   SectionHeader,
 } from '../../components/ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import {
   AdminProfile,
   MemberAssignment,
@@ -40,17 +38,28 @@ import {
 } from '../../lib/queries/admin';
 import { useMyProfile } from '../../lib/queries/profile';
 import { confirmAction, notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import { useAuthStore } from '../../stores/authStore';
 
-const ROLES: { value: MemberAssignment['role']; label: string; icon: any; color: string }[] = [
-  { value: 'owner',  label: 'Owner',  icon: Crown,  color: palette.amber[600] },
-  { value: 'admin',  label: 'Admin',  icon: Shield, color: palette.sky[600] },
-  { value: 'member', label: 'Member', icon: Users,  color: palette.slate[600] },
+const ROLES: { value: MemberAssignment['role']; label: string; icon: any }[] = [
+  { value: 'owner',  label: 'Owner',  icon: Crown },
+  { value: 'admin',  label: 'Admin',  icon: Shield },
+  { value: 'member', label: 'Member', icon: Users },
 ];
+
+/** El color del rol sale del tema: los tonos 600 no contrastaban en oscuro. */
+function roleColor(t: Tokens, role: MemberAssignment['role']): string {
+  switch (role) {
+    case 'owner':  return t.feedback.warningFg;
+    case 'admin':  return t.status.review;
+    default:       return t.text.secondary;
+  }
+}
 
 export default function AdminScreen() {
   const userId = useAuthStore((s) => s.user?.id);
-  const router = useRouter();
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: profile } = useMyProfile(userId);
   const { data: isAdmin, isLoading: loadingAdmin } = useIsAdmin();
   const { data: profiles = [], isLoading: loadingProfiles } = useAdminProfiles(profile?.org_id ?? undefined);
@@ -61,7 +70,7 @@ export default function AdminScreen() {
   if (loadingAdmin) {
     return (
       <SafeAreaView style={styles.container} edges={['top']}>
-        <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 32 }} />
+        <ActivityIndicator color={t.brand[600]} style={{ marginTop: 32 }} />
       </SafeAreaView>
     );
   }
@@ -72,7 +81,7 @@ export default function AdminScreen() {
         <ScreenHeader title="Administración" fallbackRoute="/" />
         <View style={styles.unauthorized}>
           <View style={styles.unauthorizedIcon}>
-            <ShieldAlert size={24} color={palette.amber[600]} strokeWidth={2} />
+            <ShieldAlert size={24} color={t.feedback.warningFg} strokeWidth={2} />
           </View>
           <Text style={styles.unauthorizedTitle}>Acceso restringido</Text>
           <Text style={styles.unauthorizedDesc}>
@@ -93,7 +102,7 @@ export default function AdminScreen() {
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {loadingProfiles && (
-          <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />
+          <ActivityIndicator color={t.brand[600]} style={{ marginTop: 24 }} />
         )}
 
         {!loadingProfiles && profiles.length === 0 && (
@@ -119,7 +128,7 @@ export default function AdminScreen() {
                 {p.status === 'active' || p.status === null ? 'Activo' : p.status}
               </Text>
             </View>
-            <ChevronRight size={16} color={tokens.text.muted} strokeWidth={2} />
+            <ChevronRight size={16} color={t.text.muted} strokeWidth={2} />
           </Pressable>
         ))}
 
@@ -145,6 +154,8 @@ function UserMembershipsSheet({
   areas: ReturnType<typeof useAdminAreas>['data'];
   onClose: () => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const { data: memberships = [] } = useUserAreaMemberships(user.id);
   const assignMut = useAssignMember();
   const unassignMut = useUnassignMember();
@@ -182,7 +193,7 @@ function UserMembershipsSheet({
           </View>
         </View>
         <Pressable onPress={onClose} hitSlop={8}>
-          <X size={16} color={tokens.text.muted} strokeWidth={2} />
+          <X size={16} color={t.text.muted} strokeWidth={2} />
         </Pressable>
       </View>
 
@@ -211,7 +222,7 @@ function UserMembershipsSheet({
                     hitSlop={6}
                     style={styles.removeBtn}
                   >
-                    <X size={12} color={palette.red[600]} strokeWidth={2.2} />
+                    <X size={12} color={t.feedback.errorFg} strokeWidth={2.2} />
                   </Pressable>
                 </View>
               ) : (
@@ -237,23 +248,26 @@ function RoleSelector({
   current: MemberAssignment['role'];
   onChange: (r: MemberAssignment['role']) => void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   return (
     <View style={styles.roleSelector}>
       {ROLES.map((r) => {
         const active = current === r.value;
+        const color = roleColor(t, r.value);
         return (
           <Pressable
             key={r.value}
             onPress={() => onChange(r.value)}
             style={[
               styles.roleBtn,
-              active && { backgroundColor: r.color + '1A', borderColor: r.color },
+              active && { backgroundColor: color + '22', borderColor: color },
             ]}
           >
-            {active && <Check size={10} color={r.color} strokeWidth={2.4} />}
+            {active && <Check size={10} color={color} strokeWidth={2.4} />}
             <Text style={[
               styles.roleBtnText,
-              active && { color: r.color, fontWeight: typography.weight.semibold as '600' },
+              active && { color, fontWeight: typography.weight.semibold as '600' },
             ]}>
               {r.label}
             </Text>
@@ -264,8 +278,8 @@ function RoleSelector({
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
   scroll: { paddingHorizontal: spacing[5], paddingBottom: spacing[10] },
 
   unauthorized: {
@@ -278,9 +292,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: palette.amber[50],
+    backgroundColor: t.feedback.warningBg,
     borderWidth: 1,
-    borderColor: palette.amber[100],
+    borderColor: t.border.default,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: spacing[3],
@@ -288,12 +302,12 @@ const styles = StyleSheet.create({
   unauthorizedTitle: {
     fontSize: typography.size.lg,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     marginBottom: spacing[1],
   },
   unauthorizedDesc: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     textAlign: 'center',
     maxWidth: 320,
     lineHeight: 20,
@@ -305,21 +319,21 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingVertical: spacing[3],
     paddingHorizontal: spacing[3],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
-    borderColor: tokens.border.subtle,
+    borderColor: t.border.subtle,
     marginBottom: spacing[2],
   },
-  userRowPressed: { backgroundColor: tokens.bg.subtle },
+  userRowPressed: { backgroundColor: t.bg.subtle },
   userName: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   userStatus: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 1,
     fontWeight: typography.weight.medium as '500',
   },
@@ -335,18 +349,18 @@ const styles = StyleSheet.create({
   sheetTitle: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
     letterSpacing: -0.2,
   },
   sheetSubtitle: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 1,
   },
 
   empty: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     textAlign: 'center',
     paddingVertical: spacing[4],
     fontStyle: 'italic',
@@ -358,17 +372,17 @@ const styles = StyleSheet.create({
     gap: spacing[3],
     paddingVertical: spacing[3],
     borderBottomWidth: 1,
-    borderBottomColor: tokens.border.subtle,
+    borderBottomColor: t.border.subtle,
   },
   areaDot: { width: 8, height: 8, borderRadius: 4 },
   areaName: {
     fontSize: typography.size.sm,
     fontWeight: typography.weight.medium as '500',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   areaCount: {
     fontSize: typography.size['2xs'],
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginTop: 1,
     fontWeight: typography.weight.medium as '500',
   },
@@ -383,12 +397,12 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: radius.sm,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
   roleBtnText: {
     fontSize: 10,
-    color: tokens.text.secondary,
+    color: t.text.secondary,
     fontWeight: typography.weight.medium as '500',
   },
   removeBtn: {
@@ -398,24 +412,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1,
-    borderColor: palette.red[200],
+    borderColor: t.border.default,
   },
 
   assignBtn: {
     paddingHorizontal: spacing[3],
     paddingVertical: 6,
     borderRadius: radius.md,
-    backgroundColor: palette.brand[50],
+    backgroundColor: t.brand[50],
     borderWidth: 1,
-    borderColor: palette.brand[200],
+    borderColor: t.brand[100],
   },
-  assignBtnPressed: { backgroundColor: palette.brand[100] },
+  assignBtnPressed: { backgroundColor: t.brand[100] },
   assignBtnText: {
     fontSize: typography.size.xs,
-    color: tokens.brand[600],
+    color: t.brand[600],
     fontWeight: typography.weight.semibold as '600',
   },
 });
-
-// Mantener Badge importado para futuras revisiones
-void Badge;

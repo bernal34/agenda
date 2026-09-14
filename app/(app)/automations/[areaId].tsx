@@ -14,7 +14,7 @@ import { useLocalSearchParams } from 'expo-router';
 import { Plus, Trash2, Zap } from 'lucide-react-native';
 
 import { Button, Card, ScreenHeader } from '../../../components/ui';
-import { palette, radius, spacing, tokens, typography } from '../../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../../constants/theme';
 import { confirmAction, notify } from '../../../lib/notify';
 import { useMyAreas } from '../../../lib/queries/areas';
 import { useAreaMembers } from '../../../lib/queries/assignees';
@@ -28,6 +28,7 @@ import {
   useDeleteAutomation,
   useToggleAutomation,
 } from '../../../lib/queries/automations';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 import { useAuthStore } from '../../../stores/authStore';
 
 const TRIGGER_LABEL: Record<TriggerKind, string> = {
@@ -48,6 +49,8 @@ const PRIORITY_OPTS = ['low', 'normal', 'high', 'urgent'];
 export default function AutomationsScreen() {
   const { areaId } = useLocalSearchParams<{ areaId: string }>();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const areasQ = useMyAreas(userId);
   const area = areasQ.data?.find((a) => a.id === areaId);
 
@@ -129,7 +132,7 @@ export default function AutomationsScreen() {
       />
 
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        {rulesQ.isLoading && <ActivityIndicator color={tokens.brand[600]} style={{ marginTop: 24 }} />}
+        {rulesQ.isLoading && <ActivityIndicator color={t.brand[600]} style={{ marginTop: 24 }} />}
         {rulesQ.error && (
           <Text style={styles.error}>
             {rulesQ.error instanceof Error ? rulesQ.error.message : 'Error cargando reglas'}
@@ -144,7 +147,7 @@ export default function AutomationsScreen() {
           <Card key={r.id} padding="md" style={styles.row}>
             <View style={{ flex: 1 }}>
               <View style={styles.ruleHead}>
-                <Zap size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+                <Zap size={14} color={t.brand[600]} strokeWidth={2.2} />
                 <Text style={styles.ruleName} numberOfLines={1}>{r.name}</Text>
               </View>
               <Text style={styles.ruleDesc} numberOfLines={2}>
@@ -156,7 +159,7 @@ export default function AutomationsScreen() {
               onValueChange={(v) => toggleMut.mutate({ id: r.id, enabled: v })}
             />
             <Pressable onPress={() => handleDelete(r)} hitSlop={6} style={styles.deleteBtn}>
-              <Trash2 size={14} color={palette.red[600]} strokeWidth={2} />
+              <Trash2 size={14} color={t.feedback.errorFg} strokeWidth={2} />
             </Pressable>
           </Card>
         ))}
@@ -169,7 +172,7 @@ export default function AutomationsScreen() {
               value={name}
               onChangeText={setName}
               placeholder="Nombre (ej: Mover a in_review → asignar a QA)"
-              placeholderTextColor={tokens.text.muted}
+              placeholderTextColor={t.text.muted}
             />
 
             <Text style={styles.label}>Cuando</Text>
@@ -199,7 +202,7 @@ export default function AutomationsScreen() {
                 value={actParam}
                 onChangeText={setActParam}
                 placeholder="Label a agregar"
-                placeholderTextColor={tokens.text.muted}
+                placeholderTextColor={t.text.muted}
               />
             ) : actKind !== 'archive' && (
               <Picker
@@ -220,7 +223,7 @@ export default function AutomationsScreen() {
             onPress={() => setShowNew(true)}
             style={({ pressed }) => [styles.addBtn, pressed && styles.addBtnPressed]}
           >
-            <Plus size={14} color={tokens.brand[600]} strokeWidth={2.2} />
+            <Plus size={14} color={t.brand[600]} strokeWidth={2.2} />
             <Text style={styles.addBtnText}>Nueva regla</Text>
           </Pressable>
         )}
@@ -237,6 +240,7 @@ function Picker({
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const styles = useThemedStyles(makeStyles);
   return (
     <View style={styles.pickerRow}>
       {options.map((o) => {
@@ -278,50 +282,50 @@ function describeRule(r: AutomationRule, stages: { code: string; label: string }
   return `${trigStr} → ${actStr}`;
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  container: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[4], paddingBottom: spacing[10], gap: spacing[2] },
 
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing[2] },
   ruleHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-  ruleName: { fontSize: typography.size.sm, fontWeight: typography.weight.semibold as '600', color: tokens.text.primary, flex: 1 },
-  ruleDesc: { fontSize: typography.size.xs, color: tokens.text.muted },
+  ruleName: { fontSize: typography.size.sm, fontWeight: typography.weight.semibold as '600', color: t.text.primary, flex: 1 },
+  ruleDesc: { fontSize: typography.size.xs, color: t.text.muted },
   deleteBtn: { padding: 4 },
 
   label: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
     marginTop: 4,
   },
   input: {
-    borderWidth: 1, borderColor: tokens.border.strong, borderRadius: radius.md,
+    borderWidth: 1, borderColor: t.border.strong, borderRadius: radius.md,
     paddingHorizontal: spacing[3], paddingVertical: 8,
-    fontSize: typography.size.sm, color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    fontSize: typography.size.sm, color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
 
   pickerRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[1] },
   pickerOpt: {
     paddingHorizontal: spacing[3], paddingVertical: 6,
-    borderRadius: radius.full, borderWidth: 1, borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderRadius: radius.full, borderWidth: 1, borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
-  pickerOptActive: { backgroundColor: palette.brand[50], borderColor: palette.brand[500] },
-  pickerOptText: { fontSize: typography.size.sm, color: tokens.text.secondary },
-  pickerOptTextActive: { color: palette.brand[700], fontWeight: typography.weight.semibold as '600' },
+  pickerOptActive: { backgroundColor: t.brand[50], borderColor: t.brand[500] },
+  pickerOptText: { fontSize: typography.size.sm, color: t.text.secondary },
+  pickerOptTextActive: { color: t.brand[700], fontWeight: typography.weight.semibold as '600' },
 
   addBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
-    borderWidth: 1, borderStyle: 'dashed', borderColor: palette.brand[300],
+    borderWidth: 1, borderStyle: 'dashed', borderColor: t.brand[100],
     borderRadius: radius.md, paddingVertical: 10, marginTop: spacing[2],
-    backgroundColor: tokens.bg.surface,
+    backgroundColor: t.bg.surface,
   },
-  addBtnPressed: { backgroundColor: palette.brand[50] },
-  addBtnText: { color: tokens.brand[600], fontSize: typography.size.xs, fontWeight: typography.weight.semibold as '600' },
+  addBtnPressed: { backgroundColor: t.brand[50] },
+  addBtnText: { color: t.brand[600], fontSize: typography.size.xs, fontWeight: typography.weight.semibold as '600' },
 
-  empty: { color: tokens.text.muted, fontSize: typography.size.sm, paddingVertical: spacing[2] },
-  error: { color: palette.red[600], fontSize: typography.size.sm, paddingVertical: spacing[2] },
+  empty: { color: t.text.muted, fontSize: typography.size.sm, paddingVertical: spacing[2] },
+  error: { color: t.feedback.errorFg, fontSize: typography.size.sm, paddingVertical: spacing[2] },
 });

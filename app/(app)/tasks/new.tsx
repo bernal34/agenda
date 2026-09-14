@@ -12,8 +12,9 @@ import { useAreaMembers } from '../../../lib/queries/assignees';
 import { useBoardStages } from '../../../lib/queries/stages';
 import { useCreateTask } from '../../../lib/queries/taskMutations';
 import { TaskStatus } from '../../../lib/queries/tasks';
+import { useTheme, useThemedStyles } from '../../../lib/theme';
 import { useAuthStore } from '../../../stores/authStore';
-import { radius, spacing, tokens, typography } from '../../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../../constants/theme';
 
 export default function NewTaskScreen() {
   const { area, status, date } = useLocalSearchParams<{
@@ -23,6 +24,8 @@ export default function NewTaskScreen() {
   }>();
   const router = useRouter();
   const userId = useAuthStore((s) => s.user?.id);
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const createMut = useCreateTask();
   const { data: areas } = useMyAreas(userId);
   const [selectedArea, setSelectedArea] = useState<string | undefined>(area);
@@ -56,7 +59,7 @@ export default function NewTaskScreen() {
                   <Text style={styles.areaName}>{a.name}</Text>
                   <Text style={styles.areaRole}>{a.role}</Text>
                 </View>
-                <ChevronRight size={18} color={tokens.text.muted} strokeWidth={2} />
+                <ChevronRight size={18} color={t.text.muted} strokeWidth={2} />
               </Card>
             ))}
             {areas && areas.length === 0 && (
@@ -114,12 +117,12 @@ export default function NewTaskScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: tokens.bg.app },
+const makeStyles = (t: Tokens) => StyleSheet.create({
+  safe: { flex: 1, backgroundColor: t.bg.app },
   body: { padding: spacing[5], paddingBottom: spacing[8] },
   intro: {
     fontSize: typography.size.sm,
-    color: tokens.text.muted,
+    color: t.text.muted,
     marginBottom: spacing[3],
   },
   areaCard: {
@@ -138,11 +141,11 @@ const styles = StyleSheet.create({
   areaName: {
     fontSize: typography.size.base,
     fontWeight: typography.weight.semibold as '600',
-    color: tokens.text.primary,
+    color: t.text.primary,
   },
   areaRole: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     textTransform: 'capitalize',
     marginTop: 2,
     fontWeight: typography.weight.medium as '500',
