@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { SectionHeader } from '../ui';
-import { palette, radius, spacing, tokens, typography } from '../../constants/theme';
+import { radius, spacing, typography, type Tokens } from '../../constants/theme';
 import { notify } from '../../lib/notify';
+import { useTheme, useThemedStyles } from '../../lib/theme';
 import {
   CustomField,
   useAreaCustomFields,
@@ -17,6 +18,7 @@ interface Props {
 }
 
 export function TaskCustomFields({ taskId, areaId }: Props) {
+  const styles = useThemedStyles(makeStyles);
   const fieldsQ = useAreaCustomFields(areaId);
   const valuesQ = useTaskCustomValues(taskId);
   const setMut = useSetCustomValue(taskId);
@@ -52,6 +54,8 @@ function FieldEditor({
   value: unknown;
   onSave: (v: unknown) => Promise<void> | void;
 }) {
+  const styles = useThemedStyles(makeStyles);
+  const { t } = useTheme();
   const initial = value == null ? '' : String(value);
   const [draft, setDraft] = useState(initial);
 
@@ -107,7 +111,7 @@ function FieldEditor({
         onBlur={() => commit(draft)}
         onSubmitEditing={() => commit(draft)}
         placeholder={placeholderFor(field.type)}
-        placeholderTextColor={tokens.text.muted}
+        placeholderTextColor={t.text.muted}
         keyboardType={field.type === 'number' ? 'numeric' : 'default'}
         autoCapitalize={field.type === 'url' ? 'none' : 'sentences'}
         autoCorrect={field.type !== 'url'}
@@ -116,8 +120,8 @@ function FieldEditor({
   );
 }
 
-function placeholderFor(t: CustomField['type']): string {
-  switch (t) {
+function placeholderFor(type: CustomField['type']): string {
+  switch (type) {
     case 'number': return '0';
     case 'date':   return 'YYYY-MM-DD';
     case 'url':    return 'https://...';
@@ -125,25 +129,25 @@ function placeholderFor(t: CustomField['type']): string {
   }
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (t: Tokens) => StyleSheet.create({
   section: { marginTop: spacing[5], gap: spacing[2] },
   field: { gap: spacing[1] },
   label: {
     fontSize: typography.size.xs,
-    color: tokens.text.muted,
+    color: t.text.muted,
     fontWeight: typography.weight.semibold as '600',
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
   input: {
     borderWidth: 1,
-    borderColor: tokens.border.strong,
+    borderColor: t.border.strong,
     borderRadius: radius.md,
     paddingHorizontal: spacing[3],
     paddingVertical: 8,
     fontSize: typography.size.sm,
-    color: tokens.text.primary,
-    backgroundColor: tokens.bg.surface,
+    color: t.text.primary,
+    backgroundColor: t.bg.surface,
   },
 
   optionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing[1] },
@@ -152,10 +156,10 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radius.full,
     borderWidth: 1,
-    borderColor: tokens.border.default,
-    backgroundColor: tokens.bg.surface,
+    borderColor: t.border.default,
+    backgroundColor: t.bg.surface,
   },
-  optActive: { backgroundColor: palette.brand[50], borderColor: palette.brand[500] },
-  optText: { fontSize: typography.size.sm, color: tokens.text.secondary },
-  optTextActive: { color: palette.brand[700], fontWeight: typography.weight.semibold as '600' },
+  optActive: { backgroundColor: t.brand[50], borderColor: t.brand[500] },
+  optText: { fontSize: typography.size.sm, color: t.text.secondary },
+  optTextActive: { color: t.brand[700], fontWeight: typography.weight.semibold as '600' },
 });
