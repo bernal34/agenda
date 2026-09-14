@@ -36,6 +36,15 @@ export function DraggableTaskCard({
 }: Props) {
   const styles = useThemedStyles(makeStyles);
   const { t } = useTheme();
+  // Todos los hooks van antes del return condicional. El kanban pasa
+  // `selectable={selectionMode}` y ese estado cambia en vivo, así que la misma
+  // instancia tiene que ejecutar siempre la misma cantidad de hooks: con la
+  // salida temprana arriba, entrar o salir del modo selección los descuadraba.
+  const wrapRef = useRef<View>(null);
+  const opacity = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+  }));
 
   if (selectable) {
     return (
@@ -49,9 +58,6 @@ export function DraggableTaskCard({
       </Pressable>
     );
   }
-  const wrapRef = useRef<View>(null);
-  const opacity = useSharedValue(1);
-
   const pan = Gesture.Pan()
     .activateAfterLongPress(220)
     .onStart(() => {
@@ -82,10 +88,6 @@ export function DraggableTaskCard({
       onDragStart(task, { x, y, w, h });
     });
   }
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-  }));
 
   return (
     <GestureDetector gesture={composed}>
